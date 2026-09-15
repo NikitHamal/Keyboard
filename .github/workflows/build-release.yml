@@ -16,8 +16,12 @@
 #   * every pull request            — the gate
 #   * workflow_dispatch             — for an on-demand build from any branch
 #
-# On success from main or a version tag, the APK is also published as a
-# GitHub Release so the in-app updater can discover it.
+# Every successful push build is also published as a GitHub Release so the
+# in-app updater can discover it: `main` builds as a full release, any other
+# branch as a prerelease. The updater queries `releases/latest`, which GitHub
+# resolves to the newest *full* release — so branch builds are downloadable
+# without ever being offered as auto-updates. Pull-request builds publish
+# nothing: a PR from a fork must never touch releases.
 #
 # The job produces exactly ONE release APK, signed with the checked-in demo key.
 # See the "Release signing" section of AGENTS.md for why that is safe and what
@@ -51,8 +55,9 @@ on:
       - 'tools/**'
   workflow_dispatch:
 
-# Least privilege for build steps. The release step below needs `contents: write`
-# to create a GitHub Release; that is granted only on the release job.
+# Least privilege. The build job only reads the repository and uploads an
+# artifact; publishing a Release needs `contents: write`, which is granted
+# solely to the release job below — never to the steps that compile code.
 permissions:
   contents: read
 
@@ -68,6 +73,9 @@ jobs:
     name: Assemble universal release APK
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    outputs:
+      version: ${{ steps.rename.outputs.version }}
+      short_sha: ${{ steps.rename.outputs.short_sha }}
 
     steps:
       # -----------------------------------------------------------------------
@@ -175,21 +183,43 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      # -----------------------------------------------------------------------
-      # Publish GitHub Release (main branch only)
-      #
-      # The in-app updater checks the GitHub Releases API for the latest
-      # version. A release is created only from main so that feature branches
-      # and PRs don't pollute the release feed with pre-release builds.
-      # -----------------------------------------------------------------------
+  # -------------------------------------------------------------------------
+  # Publish GitHub Release
+  #
+  # Runs after every successful push build, on any branch. `main` publishes a
+  # full release; any other branch publishes a prerelease, so the release feed
+  # stays usable and `releases/latest` — the endpoint the in-app updater
+  # polls — keeps pointing at main-line builds only.
+  #
+  # A separate job rather than more steps in `build`, because creating a
+  # release needs `contents: write` and nothing that compiles code should
+  # hold it. The APK is handed over through the uploaded artifact, so this
+  # job never runs Gradle and cannot produce a different binary than the one
+  # the build job verified.
+  # -------------------------------------------------------------------------
+  release:
+    name: Publish GitHub Release
+    needs: [build]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nepali-keyboard-v${{ needs.build.outputs.version }}-${{ needs.build.outputs.short_sha }}
+          path: dist
+
       - name: Create GitHub Release
-        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.rename.outputs.version }}-${{ steps.rename.outputs.short_sha }}
-          name: Nepali Keyboard v${{ steps.rename.outputs.version }}
+          tag_name: v${{ needs.build.outputs.version }}-${{ needs.build.outputs.short_sha }}
+          name: Nepali Keyboard v${{ needs.build.outputs.version }}
           body: |
-            ## Nepali Keyboard v${{ steps.rename.outputs.version }}
+            ## Nepali Keyboard v${{ needs.build.outputs.version }}
 
             **Commit:** `${{ github.sha }}`
             **Branch:** `${{ github.ref_name }}`
@@ -204,9 +234,10 @@ jobs:
             - Full English QWERTY
             - Emoji panel with search
             - Clipboard history
-            - Offline — zero network permissions for typing
+            - Offline typing — the network permission is used only by the in-app updater
           files: dist/*.apk
+          fail_on_unmatched_files: true
           draft: false
-          prerelease: false
+          prerelease: ${{ github.ref != 'refs/heads/main' }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
