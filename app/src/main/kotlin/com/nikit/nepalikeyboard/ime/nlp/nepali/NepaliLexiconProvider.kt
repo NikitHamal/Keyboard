@@ -103,4 +103,16 @@ class NepaliLexiconProvider(context: Context) : SuggestionProvider {
         // User-removal of learned words is not offered in v1.
         return false
     }
+
+    override suspend fun getListOfWords(subtype: Subtype): List<String> {
+        // Feeds glide typing, which is meaningfully English/Latin-only: gliding
+        // over a QWERTY grid cannot produce Romanized Nepali. Empty disables it
+        // for this subtype instead of offering Latin words mid-transliteration.
+        return emptyList()
+    }
+
+    override suspend fun getFrequencyForWord(subtype: Subtype, word: String): Double {
+        // Same glide interop as above: no frequency model outside the trie.
+        return 0.0
+    }
 }
