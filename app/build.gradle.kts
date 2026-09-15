@@ -1,187 +1,262 @@
-import java.util.Properties
+/*
+ * Copyright (C) 2022-2025 The FlorisBoard Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import com.android.build.api.dsl.ApplicationExtension
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.agp.application)
+    alias(libs.plugins.kotlin.plugin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
+    alias(libs.plugins.mikepenz.aboutlibraries)
+    alias(libs.plugins.kotest)
+    alias(libs.plugins.kotlinx.kover)
 }
 
-// ---------------------------------------------------------------------------
-// Demo signing configuration.
-//
-// `keystore/release.keystore` is a deliberately public, checked-in demo key.
-// Its credentials are intentionally in plain text so that a remote CI build
-// can produce a *signed* release APK with zero external secrets.
-//
-// This key is RESERVED FOR DEMONSTRATION ONLY. It must never be used to sign
-// a build distributed on Google Play or any store:
-//   * the private key is public, so anybody can forge an update
-//   * the key is not hardware-backed
-// See AGENTS.md -> "Release signing" before changing this block.
-// ---------------------------------------------------------------------------
-val demoKeystoreFile = rootProject.file("keystore/release.keystore")
-val demoKeystoreProps = Properties().apply {
-    val propsFile = rootProject.file("keystore/release.keystore.properties")
-    if (propsFile.exists()) {
-        propsFile.inputStream().use { load(it) }
+val projectMinSdk: String by project
+val projectTargetSdk: String by project
+val projectCompileSdk: String by project
+val projectVersionCode: String by project
+val projectVersionName: String by project
+val projectVersionNameSuffix = projectVersionName.substringAfter("-", "").let { suffix ->
+    if (suffix.isNotEmpty()) {
+        "-$suffix"
+    } else {
+        suffix
     }
 }
 
-val demoStorePassword: String = demoKeystoreProps.getProperty("storePassword", "nepalikey")
-val demoKeyAlias: String = demoKeystoreProps.getProperty("keyAlias", "nepali-keyboard")
-val demoKeyPassword: String = demoKeystoreProps.getProperty("keyPassword", "nepalikey")
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_11)
+        freeCompilerArgs.set(listOf(
+            "-opt-in=kotlin.contracts.ExperimentalContracts",
+            "-jvm-default=enable",
+            "-Xwhen-guards",
+            "-Xexplicit-backing-fields",
+            "-Xcontext-parameters",
+            "-XXLanguage:+LocalTypeAliases",
+        ))
+    }
+}
 
-android {
+configure<ApplicationExtension> {
     namespace = "com.nikit.nepalikeyboard"
-    compileSdk = 35
+    compileSdk = projectCompileSdk.toInt()
+    buildToolsVersion = tools.versions.buildTools.get()
+    ndkVersion = tools.versions.ndk.get()
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
 
     defaultConfig {
         applicationId = "com.nikit.nepalikeyboard"
-        minSdk = 26
-        targetSdk = 35
-        versionCode = 2
-        versionName = "1.1.0"
+        minSdk = projectMinSdk.toInt()
+        targetSdk = projectTargetSdk.toInt()
+        versionCode = projectVersionCode.toInt()
+        versionName = projectVersionName.substringBefore("-")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        vectorDrawables.useSupportLibrary = true
 
-        // Single universal APK (all ABIs, all densities). The project ships no
-        // native code, so this is purely about keeping exactly one artifact.
-        resourceConfigurations += listOf("en", "ne")
-    }
+        buildConfigField("String", "BUILD_COMMIT_HASH", "\"${getGitCommitHash().get()}\"")
+        buildConfigField("String", "FLADDONS_API_VERSION", "\"v~draft2\"")
+        buildConfigField("String", "FLADDONS_STORE_URL", "\"beta.addons.florisboard.org\"")
 
-    signingConfigs {
-        create("release") {
-            storeFile = demoKeystoreFile
-            storePassword = demoStorePassword
-            keyAlias = demoKeyAlias
-            keyPassword = demoKeyPassword
-
-            // v1 is required for API 26 compatibility margins; v2/v3 are the
-            // modern schemes. enableV3 enables key rotation metadata.
-            enableV1Signing = true
-            enableV2Signing = true
-            enableV3Signing = true
+        sourceSets {
+            maybeCreate("main").apply {
+                assets.directories += "src/main/assets"
+            }
         }
     }
 
-    buildTypes {
-        debug {
-            applicationIdSuffix = ".debug"
-            versionNameSuffix = "-debug"
-            isMinifyEnabled = false
-            isDebuggable = true
-        }
-        release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-            signingConfig = signingConfigs.getByName("release")
-
-            // The lexicon + font assets are already compact; keep them intact.
-            isCrunchPngs = false
-        }
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-        // java.time / java.util.stream desugaring for API 26.
-        isCoreLibraryDesugaringEnabled = false
-    }
-
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-            // Aggressive but safe: keep the transliteration hot path monomorphic.
-            freeCompilerArgs.addAll(
-                "-Xjvm-default=all",
-                "-opt-in=kotlin.RequiresOptIn",
-                "-opt-in=kotlin.ExperimentalStdlibApi"
-            )
+    bundle {
+        language {
+            // We disable language split because FlorisBoard does not use
+            // runtime Google Play Service APIs and thus cannot dynamically
+            // request to download the language resources for a specific locale.
+            enableSplit = false
         }
     }
 
     buildFeatures {
-        compose = true
         buildConfig = true
+        compose = true
     }
 
-    // Ship only the language resources we actually declare.
-    androidResources {
-        generateLocaleConfig = false
+    // Release signing with the checked-in demo key. The keystore and its
+    // credentials live in keystore/ on purpose: the private key is public, so
+    // CI can sign without secrets. Never use it for store distribution.
+    val keystorePropsFile = rootProject.file("keystore/release.keystore.properties")
+    val keystoreProps = java.util.Properties()
+    if (keystorePropsFile.exists()) {
+        keystorePropsFile.inputStream().use { keystoreProps.load(it) }
     }
-
-    packaging {
-        resources {
-            excludes += setOf(
-                "/META-INF/{AL2.0,LGPL2.1}",
-                "/META-INF/DEPENDENCIES",
-                "/META-INF/LICENSE*",
-                "DebugProbesKt.bin",
-                "kotlin-tooling-metadata.json"
-            )
+    signingConfigs {
+        create("release") {
+            storeFile = rootProject.file("keystore/release.keystore")
+            storePassword = keystoreProps.getProperty("storePassword")
+            keyAlias = keystoreProps.getProperty("keyAlias")
+            keyPassword = keystoreProps.getProperty("keyPassword")
         }
+    }
+
+    buildTypes {
+        named("debug") {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug+${getGitCommitHash(short = true).get()}"
+
+            isDebuggable = true
+            isJniDebuggable = false
+        }
+
+        create("beta") {
+            applicationIdSuffix = ".beta"
+            versionNameSuffix = projectVersionNameSuffix
+
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            isMinifyEnabled = true
+            isShrinkResources = true
+        }
+
+        named("release") {
+            versionNameSuffix = projectVersionNameSuffix
+            signingConfig = signingConfigs.getByName("release")
+
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            isMinifyEnabled = true
+            isShrinkResources = true
+        }
+
+        create("benchmark") {
+            initWith(getByName("release"))
+
+            applicationIdSuffix = ".bench"
+            versionNameSuffix = "-bench+${getGitCommitHash(short = true).get()}"
+
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
+    }
+
+    lint {
+        baseline = file("lint.xml")
     }
 
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
-            isReturnDefaultValues = true
         }
-    }
-
-    lint {
-        abortOnError = false
-        checkReleaseBuilds = false
+        unitTests.all {
+            it.useJUnitPlatform()
+        }
     }
 }
 
-dependencies {
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.splashscreen)
+aboutLibraries {
+    collect {
+        configPath = file("src/main/config")
+    }
+}
 
-    // Lifecycle — required to host a Compose tree inside an InputMethodService.
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.lifecycle.service)
-    implementation(libs.androidx.lifecycle.viewmodel.savedstate)
-    implementation(libs.androidx.savedstate)
+ksp {
+    arg("room.schemaLocation", "$projectDir/schemas")
+    arg("room.incremental", "true")
+    arg("room.expandProjection", "true")
+}
+
+tasks.withType<Test> {
+    testLogging {
+        events = setOf(TestLogEvent.FAILED, TestLogEvent.PASSED, TestLogEvent.SKIPPED)
+    }
+    useJUnitPlatform()
+}
+
+kover {
+    useJacoco()
+}
+
+dependencies {
+    val composeBom = platform(libs.androidx.compose.bom)
+    implementation(composeBom)
+    // testImplementation(composeBom)
+    // androidTestImplementation(composeBom)
 
     implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.navigation.compose)
-
-    // Compose — versions come from the BOM.
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.activity.ktx)
+    implementation(libs.androidx.autofill)
+    implementation(libs.androidx.collection.ktx)
+    implementation(libs.androidx.compose.material.icons)
     implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material.icons.extended)
-    implementation(libs.androidx.compose.runtime)
-
-    implementation(libs.androidx.datastore.preferences)
-
-    implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.androidx.compose.runtime.livedata)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.core.splashscreen)
+    implementation(libs.androidx.emoji2)
+    implementation(libs.androidx.emoji2.views)
+    implementation(libs.androidx.exifinterface)
+    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.profileinstaller)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.window.core)
+    implementation(libs.cache4k)
+    implementation(libs.kotlin.reflect)
+    implementation(libs.kotlinx.coroutines)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.mikepenz.aboutlibraries.core)
+    implementation(libs.mikepenz.aboutlibraries.compose)
+    implementation(libs.patrickgold.compose.tooltip)
+    implementation(libs.patrickgold.jetpref.datastore.model)
+    ksp(libs.patrickgold.jetpref.datastore.model.processor)
+    implementation(libs.patrickgold.jetpref.datastore.ui)
+    implementation(libs.patrickgold.jetpref.material.ui)
 
-    debugImplementation(libs.androidx.compose.ui.tooling)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
+    implementation(projects.lib.android)
+    implementation(projects.lib.color)
+    implementation(projects.lib.compose)
+    implementation(projects.lib.kotlin)
+    implementation(projects.lib.native)
+    implementation(projects.lib.snygg)
 
-    testImplementation(libs.junit)
+    testImplementation(libs.kotest.assertions.core)
+    testImplementation(libs.kotest.property)
+    testImplementation(libs.kotest.runner.junit5)
+    testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.robolectric)
-    testImplementation(libs.mockk)
-
-    androidTestImplementation(libs.androidx.test.junit)
+    testImplementation(libs.turbine)
+    androidTestImplementation(libs.androidx.test.ext)
     androidTestImplementation(libs.androidx.test.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
+}
+
+fun getGitCommitHash(short: Boolean = false): Provider<String> {
+    if (!File(".git").exists()) {
+        return providers.provider { "null" }
+    }
+
+    val execProvider = providers.exec {
+        if (short) {
+            commandLine("git", "rev-parse", "--short", "HEAD")
+        } else {
+            commandLine("git", "rev-parse", "HEAD")
+        }
+    }
+    return execProvider.standardOutput.asText.map { it.trim() }
 }
