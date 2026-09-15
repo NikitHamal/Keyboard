@@ -1,0 +1,14 @@
+# Gradle / Android build outputs
+.gradle/
+build/
+**/build/
+local.properties
+*.iml
+.idea/
+.DS_Store
+# APK / AAB outputs (CI renames and uploads the release APK instead)
+*.apk
+*.aab
+# Hoplite runtime state
+.hoplite/
+.context/

@@ -1,0 +1,17 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- White Himalayan peak on Nepal-blue field -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M54,28 L82,80 L26,80 Z" />
+    <path
+        android:fillColor="#FF003893"
+        android:pathData="M54,46 L68,72 L40,72 Z" />
+    <!-- Sun above the peak -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M70,22a8,8 0 1,0 0.1,0a8,8 0 1,0 -0.1,0" />
+</vector>
