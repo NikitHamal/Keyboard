@@ -140,6 +140,16 @@ class NepaliImeService : InputMethodService() {
     private var currentEditorInfo: EditorInfo? = null
 
     /**
+     * The input view returned from the most recent `onCreateInputView`, if any.
+     *
+     * Retained so the window-root tagging (see `installDecorOwners`) can reach
+     * the root view without touching the service window APIs, which are not
+     * part of the public SDK. Cleared in `onDestroyInputView` and `onDestroy`
+     * so a dead view is never referenced.
+     */
+    private var inputView: View? = null
+
+    /**
      * The haptic service, resolved once. On API 31+ this must come from
      * `VibratorManager`; the old `getSystemService(VIBRATOR_SERVICE)` path is
      * deprecated and returns a default vibrator that ignores intensity.
@@ -255,26 +265,22 @@ class NepaliImeService : InputMethodService() {
             // still runs afterwards and is still the authority for teardown;
             // this is belt-and-braces for the attach-time read.
             //
-            // The window decor is tagged as well (see installDecorOwners):
+            // The window root is tagged as well (see installDecorOwners):
             // the recomposer is window-scoped, so it is resolved against the
             // root view. On several OEM builds the input view is hosted
             // inside an AlertDialog whose root is android:id/parentPanel,
             // and tagging only this ComposeView leaves that lookup with no
-            // owner and the same crash. Tagging the decor covers that path.
+            // owner and the same crash. Tagging the root covers that path.
             // -----------------------------------------------------------------
             setViewTreeLifecycleOwner(owner)
             setViewTreeViewModelStoreOwner(owner)
             setViewTreeSavedStateRegistryOwner(owner)
 
-            // Tag the decor now if the window already exists, and re-tag on
-            // attach for the case where the window is created after this view.
-            installDecorOwners()
+            // Re-tag the root on attach, for the case where the window (and
+            // therefore the root) only exists after this view is attached.
             addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
                 override fun onViewAttachedToWindow(v: View) {
                     installDecorOwners()
-                    // The root may be the dialog parentPanel on OEM ROMs;
-                    // ensure the whole chain resolves to our owner.
-                    tagViewTreeOwners(v.rootView ?: v)
                 }
                 override fun onViewDetachedFromWindow(v: View) = Unit
             })
@@ -299,7 +305,23 @@ class NepaliImeService : InputMethodService() {
 
         Log.d(TAG, "Input view created")
 
+        inputView = view
+        installDecorOwners()
         return view
+    }
+
+    /**
+     * Called when the input view is being torn down (rotation, theme change).
+     *
+     * Clears the root tags installed by `installDecorOwners` so a recycled
+     * window never resolves to this service instance's owner, then drops the
+     * reference so the dead view can be collected. The next
+     * `onCreateInputView` re-installs everything on the fresh view.
+     */
+    override fun onDestroyInputView() {
+        clearDecorOwners()
+        inputView = null
+        super.onDestroyInputView()
     }
 
     /**
@@ -334,8 +356,9 @@ class NepaliImeService : InputMethodService() {
         // one. Composer state is preserved.
         input.rebind(currentInputConnection)
 
-        // The window decor is guaranteed to exist here, even on builds where
-        // it was null during onCreateInputView. Re-tag so the window-scoped
+        // The view is attached by the time the keyboard is shown, so the
+        // root is the real window root here even on builds where it was not
+        // yet available in onCreateInputView. Re-tag so the window-scoped
         // recomposer lookup always resolves.
         installDecorOwners()
 
@@ -491,6 +514,7 @@ class NepaliImeService : InputMethodService() {
         viewModel?.onServiceDestroying()
         uninstallClipboardCapture()
         clearDecorOwners()
+        inputView = null
         keyboardLifecycle.destroy()
         serviceScope?.cancel()
         serviceScope = null
@@ -502,7 +526,7 @@ class NepaliImeService : InputMethodService() {
     }
 
     /**
-     * Tags the IME window decor with our three view-tree owners.
+     * Tags the input view's root view with our three view-tree owners.
      *
      * The Compose recomposer is window-scoped: `getWindowRecomposer(view)`
      * resolves against the root view, not against the ComposeView itself.
@@ -512,21 +536,22 @@ class NepaliImeService : InputMethodService() {
      *
      *   ViewTreeLifecycleOwner not found from LinearLayout parentPanel
      *
-     * Tagging the decor covers that path because parentPanel walks up to the
-     * decor and finds our owner there. Safe to call repeatedly and when the
-     * window is not yet available (then it is a no-op; the attach listener
-     * installed in `onCreateInputView` retries).
+     * Tagging the root covers that path because parentPanel walks up to the
+     * root and finds our owner there. Reached via `inputView.rootView` rather
+     * than the service window APIs, which are not public SDK: pre-attach the
+     * root is the view itself (a harmless re-tag), post-attach it is the
+     * window's root. Safe to call repeatedly; a no-op when there is no view.
      */
     private fun installDecorOwners() {
         try {
-            val decor = try {
-                window?.decorView
+            val root = try {
+                inputView?.rootView
             } catch (t: Throwable) {
                 null
             } ?: return
-            tagViewTreeOwners(decor)
+            tagViewTreeOwners(root)
         } catch (t: Throwable) {
-            Log.w(TAG, "Could not tag window decor", t)
+            Log.w(TAG, "Could not tag window root", t)
         }
     }
 
@@ -547,22 +572,22 @@ class NepaliImeService : InputMethodService() {
     }
 
     /**
-     * Clears the decor tags so a destroyed service is never resolved through
+     * Clears the root tags so a destroyed service is never resolved through
      * a recycled window. The per-ComposeView tags are cleared by
      * `InstallKeyboardViewTreeOwners` on dispose; this covers the window half.
      */
     private fun clearDecorOwners() {
         try {
-            val decor = try {
-                window?.decorView
+            val root = try {
+                inputView?.rootView
             } catch (t: Throwable) {
                 null
             } ?: return
-            decor.setViewTreeLifecycleOwner(null)
-            decor.setViewTreeViewModelStoreOwner(null)
-            decor.setViewTreeSavedStateRegistryOwner(null)
+            root.setViewTreeLifecycleOwner(null)
+            root.setViewTreeViewModelStoreOwner(null)
+            root.setViewTreeSavedStateRegistryOwner(null)
         } catch (t: Throwable) {
-            Log.w(TAG, "Could not clear window decor owners", t)
+            Log.w(TAG, "Could not clear window root owners", t)
         }
     }
 

@@ -48,7 +48,7 @@
 
       android:windowIsFloating=false is therefore load-bearing, not cosmetic.
       It is what keeps the input view in the IME's own non-floating window,
-      whose decor we tag with our three view-tree owners.
+      whose root view we tag with our three view-tree owners.
     -->
     <style name="Theme.NepaliKeyboard.Ime" parent="Theme.NepaliKeyboard">
         <item name="android:windowBackground">@android:color/transparent</item>

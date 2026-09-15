@@ -60,9 +60,9 @@
             1. this attribute, so the window is declared non-floating; and
             2. NepaliImeService tagging the ComposeView directly in
                onCreateInputView, before the system attaches it; and
-            3. NepaliImeService tagging the window decor itself, because the
-               recomposer is window-scoped and is resolved against the root
-               view — tagging only the child leaves the parentPanel lookup
+            3. NepaliImeService tagging the input view's root view itself,
+               because the recomposer is window-scoped and is resolved against
+               the root — tagging only the child leaves the parentPanel lookup
                with no owner on several OEM builds (Itel A662LM, Android 12).
         -->
         <service

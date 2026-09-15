@@ -431,7 +431,7 @@ ALLOW |= set(
     tween fadeIn fadeOut slideInHorizontally slideOutHorizontally
     mutableIntStateOf showInputMethodPicker verticalScroll
     decorView addOnAttachStateChangeListener onViewAttachedToWindow onViewDetachedFromWindow
-    focusRequester show clearFocus requestFocus
+    focusRequester show clearFocus requestFocus rootView
     """.split()
 )
 
