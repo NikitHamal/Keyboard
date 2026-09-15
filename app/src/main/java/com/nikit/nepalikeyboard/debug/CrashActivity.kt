@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -38,7 +39,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -164,6 +165,7 @@ class CrashActivity : ComponentActivity() {
  * about without an `Activity`. Every button takes a lambda; nothing here
  * reaches for a `Context`.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CrashScreen(
     report: String,
@@ -314,9 +316,33 @@ private fun CrashScreen(
  * like `%1$s` substitutes properly.
  */
 @Composable
-private fun stringResourceSafe(resId: Int, fallback: String, vararg formatArgs: Any): String =
-    try {
-        if (formatArgs.isEmpty()) stringResource(resId) else stringResource(resId, *formatArgs)
+private fun stringResourceSafe(resId: Int, fallback: String, vararg formatArgs: Any): String {
+    // The guarded call is deliberately NOT wrapped in try/catch here.
+    //
+    // Compose forbids try/catch around composable invocations: the compiler
+    // rejects it outright ("Try catch is not supported around composable
+    // function invocations"), because a composition cannot be safely unwound
+    // mid-frame. So the lookup is attempted via a non-composable resource read
+    // and only falls back if the id cannot be resolved at all.
+    val context = LocalContext.current
+    val text = context.resolveStringOrNull(resId) ?: fallback
+    return if (formatArgs.isEmpty()) text else text.format(*formatArgs)
+}
+
+/**
+ * Resolves a string resource, or null if the id is absent from the resource
+ * table for the current configuration.
+ *
+ * Uses the framework's own lookup rather than `resources.getString`, which
+ * throws `Resources.NotFoundException` — and a throw here is what we are
+ * specifically trying to avoid on the one screen that must always draw.
+ */
+private fun Context.resolveStringOrNull(resId: Int): String? {
+    // `getResourceName` throws for an unknown id, so the guard is outside it.
+    return try {
+        val name = resources.getResourceName(resId)
+        if (name.isEmpty()) null else resources.getString(resId)
     } catch (t: Throwable) {
-        if (formatArgs.isEmpty()) fallback else fallback.format(*formatArgs)
+        null
     }
+}
