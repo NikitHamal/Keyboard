@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  IME subtype declarations.
+  `imeSubtypeLocale` must be a BCP-47 tag. "ne" is Nepali, "en" is English.
+  `imeSubtypeMode` is "keyboard" for both. Two subtypes let the platform's
+  per-app language routing switch us into the right default mode.
+-->
+<input-method xmlns:android="http://schemas.android.com/apk/res/android"
+    android:settingsActivity="com.nikit.nepalikeyboard.settings.SettingsActivity"
+    android:supportsSwitchingToNextInputMethod="true">
+
+    <subtype
+        android:label="@string/subtype_nepali"
+        android:imeSubtypeLocale="ne_NP"
+        android:languageTag="ne-NP"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="false"
+        android:imeSubtypeExtraValue="EmojiCapable,AsciiCapableWhenOff" />
+
+    <subtype
+        android:label="@string/subtype_english"
+        android:imeSubtypeLocale="en_US"
+        android:languageTag="en-US"
+        android:imeSubtypeMode="keyboard"
+        android:isAsciiCapable="true"
+        android:imeSubtypeExtraValue="EmojiCapable" />
+
+</input-method>

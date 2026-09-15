@@ -1,0 +1,18 @@
+.gradle/
+build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+captures/
+.externalNativeBuild/
+.cxx/
+*.log
+
+# Do NOT ignore keystore/release.keystore — it is a deliberately public
+# demo signing key so that the CI pipeline can produce a signed release APK
+# without external secrets. See AGENTS.md for the security rationale.
+
+# Local AI-assistant working state (session memory, scratch notes). Not part
+# of the project and not meaningful to anyone else's checkout.
+.workbuddy-ai/

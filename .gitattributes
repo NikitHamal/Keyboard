@@ -1,0 +1,75 @@
+# Line-ending policy.
+#
+# This repository is developed on Windows and built on Linux (GitHub Actions,
+# ubuntu-latest). A contributor with `core.autocrlf=true` — the Windows default
+# — would otherwise commit CRLF line endings, and that breaks two things that
+# are easy to miss until CI fails:
+#
+#   1. `gradlew` is a POSIX shell script. With CRLF it fails on Linux with
+#      `bad interpreter: /bin/sh^M`, and the error names the interpreter rather
+#      than the line endings, so it reads as a missing-file problem.
+#   2. `tools/kotlin_lint.py` and `tools/kotlin_refcheck.py` are invoked as
+#      `python tools/<x>.py`. Same failure mode, and they run as the FIRST CI
+#      steps, so a CRLF checkout would turn a source-hygiene check into a
+#      confusing crash before the build even starts.
+#
+# Everything a Linux process executes or parses must therefore be LF. Text that
+# is only ever read by Windows tooling can stay native, but there is nothing
+# here that qualifies, so the default is `text=auto` and the exceptions are
+# explicit.
+
+# Default: let Git normalise, storing LF in the repository.
+* text=auto eol=lf
+
+# Shell scripts must be LF in the working tree too, not just in the object
+# store. `eol=lf` is what enforces that on checkout.
+gradlew text eol=lf
+*.sh    text eol=lf
+
+# Python is executed by the CI runner, so it must be LF as well.
+*.py    text eol=lf
+
+# Kotlin sources: compiled by the Linux runner's Kotlin compiler. Kotlin is
+# line-ending agnostic, but keeping them LF means a diff produced on Windows and
+# a diff produced on Linux are identical, which keeps review noise down.
+*.kt    text eol=lf
+
+# Build and resource files that are read by Gradle on the Linux runner.
+*.kts   text eol=lf
+*.toml  text eol=lf
+*.xml   text eol=lf
+*.json  text eol=lf
+*.pro   text eol=lf
+*.md    text eol=lf
+
+# Windows batch scripts genuinely need CRLF — cmd.exe mishandles LF in some
+# constructs (notably labels and multi-line parenthesised blocks).
+*.bat   text eol=crlf
+
+# Binary assets must never be touched by any normalisation. Without this, a
+# `text=auto` rule can still decide a file is text if it happens to contain no
+# NUL bytes, and re-encoding a TrueType font or a JKS keystore corrupts it
+# irreversibly — the corruption is silent until a build fails to load the font
+# or the signing step rejects the key.
+*.ttf        binary
+*.otf        binary
+*.keystore   binary
+*.jks        binary
+*.png        binary
+*.jpg        binary
+*.jpeg       binary
+*.webp       binary
+*.zip        binary
+*.jar        binary
+*.apk        binary
+*.aab        binary
+
+# Gradle wrapper jars are binaries and are already covered by *.jar above, but
+# named explicitly because a corrupted wrapper is a supply-chain problem rather
+# than a build annoyance.
+gradle/wrapper/gradle-wrapper.jar binary
+
+# Keep generated artifacts out of `git diff` entirely.
+app/build/**   -diff
+build/**       -diff
+.gradle/**     -diff

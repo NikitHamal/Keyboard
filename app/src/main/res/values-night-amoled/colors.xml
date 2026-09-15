@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  AMOLED overrides. Applied when the user selects the "AMOLED" theme mode,
+  which is a *runtime* setting — this qualifier file handles the case where
+  the user has also put the whole device in dark mode AND the AMOLED surfaces
+  are appropriate. The runtime Compose palette remains the source of truth;
+  these values keep the XML window background in sync so there is no white
+  flash during activity creation.
+-->
+<resources>
+    <color name="nk_background">#000000</color>
+    <color name="nk_surface">#000000</color>
+    <color name="nk_surface_container_lowest">#000000</color>
+    <color name="nk_surface_container_low">#0A0505</color>
+    <color name="nk_surface_container">#120A0A</color>
+    <color name="nk_surface_container_high">#1C1212</color>
+    <color name="nk_surface_container_highest">#261A1A</color>
+
+    <color name="nk_key_background">#141414</color>
+    <color name="nk_key_background_pressed">#2A2222</color>
+    <color name="nk_key_modifier">#0C0A0A</color>
+    <color name="nk_key_modifier_pressed">#221C1C</color>
+</resources>

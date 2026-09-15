@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ===================================================================
+         Dark palette. Same hue family, inverted tonal steps.
+         =================================================================== -->
+
+    <color name="nk_primary">#FFB3B2</color>
+    <color name="nk_on_primary">#5F1220</color>
+    <color name="nk_primary_container">#7D2A36</color>
+    <color name="nk_on_primary_container">#FFDADA</color>
+
+    <color name="nk_secondary">#E7BDB8</color>
+    <color name="nk_on_secondary">#442926</color>
+    <color name="nk_secondary_container">#5D3F3B</color>
+    <color name="nk_on_secondary_container">#FFDAD6</color>
+
+    <color name="nk_tertiary">#E0C38C</color>
+    <color name="nk_on_tertiary">#3E2E04</color>
+    <color name="nk_tertiary_container">#574419</color>
+    <color name="nk_on_tertiary_container">#FDDFAA</color>
+
+    <color name="nk_error">#FFB4AB</color>
+    <color name="nk_on_error">#690005</color>
+    <color name="nk_error_container">#93000A</color>
+    <color name="nk_on_error_container">#FFDAD6</color>
+
+    <color name="nk_background">#1A1111</color>
+    <color name="nk_on_background">#F0DEDD</color>
+    <color name="nk_surface">#1A1111</color>
+    <color name="nk_on_surface">#F0DEDD</color>
+    <color name="nk_surface_variant">#524342</color>
+    <color name="nk_on_surface_variant">#D7C1BF</color>
+    <color name="nk_outline">#9F8C8A</color>
+    <color name="nk_outline_variant">#524342</color>
+
+    <color name="nk_surface_container_lowest">#140C0C</color>
+    <color name="nk_surface_container_low">#231919</color>
+    <color name="nk_surface_container">#271D1D</color>
+    <color name="nk_surface_container_high">#322727</color>
+    <color name="nk_surface_container_highest">#3D3232</color>
+
+    <color name="nk_inverse_surface">#F0DEDD</color>
+    <color name="nk_inverse_on_surface">#392E2D</color>
+    <color name="nk_scrim">#000000</color>
+
+    <color name="nk_key_background">#3A3030</color>
+    <color name="nk_key_background_pressed">#4E4241</color>
+    <color name="nk_key_modifier">#2B2121</color>
+    <color name="nk_key_modifier_pressed">#3E3332</color>
+    <color name="nk_key_accent">#FFB3B2</color>
+    <color name="nk_key_accent_pressed">#E29A99</color>
+    <color name="nk_key_text">#F0DEDD</color>
+    <color name="nk_key_text_on_accent">#5F1220</color>
+
+</resources>

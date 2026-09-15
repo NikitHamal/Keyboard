@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ===================================================================
+         Nepali (नेपाली) localisation.
+         Note: key glyph labels (⇧, ⌫, ?123, ABC …) are marked
+         translatable="false" in the default file and therefore intentionally
+         absent here.
+         =================================================================== -->
+
+    <string name="app_name">नेपाली किबोर्ड</string>
+    <string name="ime_service_label">नेपाली किबोर्ड</string>
+    <string name="sandbox_title">टाइपिङ अभ्यास</string>
+
+    <string name="subtype_nepali">नेपाली</string>
+    <string name="subtype_english">अङ्ग्रेजी</string>
+
+    <string name="space_hint_english">अङ्ग्रेजी</string>
+    <string name="space_hint_devanagari">नेपाली</string>
+    <string name="space_hint_romanized">रोमन नेपाली</string>
+    <string name="space_hint_emoji">इमोजी</string>
+
+    <string name="suggestion_literal_label">जस्ताको तस्तै</string>
+    <string name="suggestion_translit_label">लिप्यन्तरण</string>
+    <string name="suggestion_no_results">कुनै सुझाव छैन</string>
+
+    <string name="clipboard_empty">क्लिपबोर्ड इतिहास खाली छ</string>
+    <string name="clipboard_clear_all">इतिहास मेटाउनुहोस्</string>
+    <string name="clipboard_pin">पिन गर्नुहोस्</string>
+    <string name="clipboard_unpin">पिन हटाउनुहोस्</string>
+    <string name="clipboard_delete">हटाउनुहोस्</string>
+    <string name="clipboard_privacy_note">इतिहास यही यन्त्रमा मात्र रहन्छ, कहिल्यै पठाइँदैन।</string>
+    <string name="clipboard_pinned">पिन गरिएको</string>
+
+    <string name="emoji_search_hint">इमोजी खोज्नुहोस्…</string>
+    <string name="emoji_category_recent">हालैका</string>
+    <string name="emoji_category_smileys">अनुहार</string>
+    <string name="emoji_category_people">मानिस</string>
+    <string name="emoji_category_animals">जनावर</string>
+    <string name="emoji_category_food">खाना</string>
+    <string name="emoji_category_travel">यात्रा</string>
+    <string name="emoji_category_objects">सामान</string>
+    <string name="emoji_category_symbols">सङ्केत</string>
+    <string name="emoji_category_flags">झन्डा</string>
+
+    <string name="settings_title">सेटिङ</string>
+    <string name="settings_section_setup">सेटअप</string>
+    <string name="settings_section_layout">लेआउट</string>
+    <string name="settings_section_typing">टाइपिङ</string>
+    <string name="settings_section_appearance">देखावट</string>
+    <string name="settings_section_feedback">प्रतिक्रिया</string>
+    <string name="settings_section_clipboard">क्लिपबोर्ड</string>
+    <string name="settings_section_privacy">गोपनीयता</string>
+    <string name="settings_section_about">बारेमा</string>
+
+    <string name="settings_enable_ime">नेपाली किबोर्ड सक्रिय गर्नुहोस्</string>
+    <string name="settings_enable_ime_desc">पहिले सिस्टम सेटिङमा किबोर्ड खोल्नुहोस्, त्यसपछि यसलाई आफ्नो इनपुट विधिका रूपमा छान्नुहोस्।</string>
+    <string name="settings_select_ime">इनपुट विधि छान्नुहोस्</string>
+    <string name="settings_ime_enabled">सक्रिय</string>
+    <string name="settings_ime_not_enabled">सक्रिय छैन</string>
+    <string name="settings_ime_selected">हालको किबोर्डका रूपमा छानिएको</string>
+    <string name="settings_open_sandbox">टाइपिङ अभ्यास खोल्नुहोस्</string>
+    <string name="settings_open_sandbox_desc">केही पनि सुरक्षित नगर्ने स्थानीय फाँटमा अभ्यास गर्नुहोस्।</string>
+    <string name="settings_rerun_setup">सेटअप मार्गदर्शन फेरि चलाउनुहोस्</string>
+    <string name="settings_rerun_setup_desc">किबोर्ड सक्रिय गर्ने र छान्ने चरणहरू फेरि हेर्नुहोस्।</string>
+
+    <string name="settings_default_mode">पूर्वनिर्धारित इनपुट मोड</string>
+    <string name="settings_keyboard_height">किबोर्डको उचाइ</string>
+    <string name="settings_keyboard_height_value">%1$d dp</string>
+    <string name="settings_one_handed">एक हाते मोड</string>
+    <string name="settings_one_handed_desc">किबोर्ड एक छेउतिर सानो बनाउनुहोस्, टाढाका कुञ्जी सजिलै थिच्न मिल्नेछ।</string>
+    <string name="settings_auto_capitalize">वाक्य स्वतः ठूलो अक्षर</string>
+    <string name="settings_auto_capitalize_desc">पूर्णविराम, प्रश्नवाचक वा विस्मयादिबोधक चिन्हपछि पहिलो अक्षर ठूलो बनाउनुहोस्।</string>
+    <string name="settings_double_space_period">दुई स्पेसले पूर्णविराम</string>
+    <string name="settings_double_space_period_desc">स्पेसबारमा दुई चोटि थिच्दा “। ” राखिन्छ।</string>
+    <string name="settings_auto_correct">टाइप गर्दा सुझाव</string>
+    <string name="settings_auto_correct_desc">कुञ्जीमाथि लिप्यन्तरण र शब्दकोशका विकल्प देखाउनुहोस्।</string>
+    <string name="settings_learn_words">टाइप गरेका शब्द सिक्नुहोस्</string>
+    <string name="settings_learn_words_desc">स्वीकार गरेका शब्दको क्रम स्थानीय रूपमा बढाउनुहोस्। पासवर्ड फाँटमा पूर्ण रूपमा बन्द।</string>
+
+    <string name="settings_theme_mode">रङ योजना</string>
+    <string name="settings_theme_system">सिस्टम अनुसार</string>
+    <string name="settings_theme_light">उज्यालो</string>
+    <string name="settings_theme_dark">अँध्यारो</string>
+    <string name="settings_theme_amoled">AMOLED कालो</string>
+    <string name="settings_dynamic_color">Material You गतिशील रङ</string>
+    <string name="settings_dynamic_color_desc">वालपेपरबाट रङ योजना बनाउनुहोस्। Android 12 वा नयाँ आवश्यक।</string>
+    <string name="settings_dynamic_color_unavailable">यो यन्त्रमा उपलब्ध छैन</string>
+    <string name="settings_key_borders">कुञ्जीको किनारा देखाउनुहोस्</string>
+    <string name="settings_haptic">कम्पन प्रतिक्रिया</string>
+    <string name="settings_haptic_strength">कम्पनको तीव्रता</string>
+    <string name="settings_sound">कुञ्जी ध्वनि</string>
+    <string name="settings_sound_desc">सिस्टमको कुञ्जी-क्लिक भोल्युम प्रयोग हुन्छ।</string>
+    <string name="settings_clipboard_history">क्लिपबोर्ड इतिहास सुरक्षित गर्नुहोस्</string>
+    <string name="settings_clipboard_history_desc">किबोर्डभित्रै हालैका क्लिपबोर्ड सामग्री उपलब्ध राख्नुहोस्।</string>
+    <string name="settings_clipboard_limit">इतिहासको आकार</string>
+
+    <string name="settings_privacy_title">गोपनीयता</string>
+    <string name="settings_privacy_body">यो किबोर्डले कुनै पनि सञ्जाल अनुमति माग्दैन। Android प्लेटफर्म आफैँले यसलाई सकेट खोल्नबाट रोक्छ, त्यसैले तपाईंले टाइप गरेको कुरा कहिल्यै पठाउन सकिँदैन — न कुञ्जी थिचाइ, न क्लिपबोर्ड सामग्री, न सिकेका शब्द। सबै शब्दकोश र लिप्यन्तरण नियम APK भित्रै छन् र तपाईंको यन्त्रमै चल्छन्।</string>
+    <string name="settings_privacy_bullet_offline">इन्टरनेट पहुँच शून्य — manifest बाटै अवरुद्ध, android.permission.INTERNET को अनुपस्थितिले प्रमाणित</string>
+    <string name="settings_privacy_bullet_notelemetry">कुनै विश्लेषण, कुनै क्र्यास अपलोड, कुनै विज्ञापन पहिचायक छैन</string>
+    <string name="settings_privacy_bullet_password">पासवर्ड फाँटले सबै सिकेका मोडेल बाइपास गर्छ र सुझाव बन्द गर्छ</string>
+    <string name="settings_privacy_bullet_clipboard">क्लिपबोर्ड इतिहास यन्त्रबाट बाहिर जाँदैन र तुरुन्तै मेटाउन सकिन्छ</string>
+    <string name="settings_privacy_bullet_backup">सबै एप डेटाका लागि क्लाउड ब्याकअप र यन्त्र स्थानान्तरण बन्द छ</string>
+
+    <string name="settings_about_version">संस्करण %1$s</string>
+    <string name="settings_about_licenses">समावेशित फन्ट: Poppins र Noto Sans Devanagari, दुवै SIL Open Font License 1.1 अन्तर्गत।</string>
+    <string name="settings_export_lexicon">शब्दकोश तथ्याङ्क</string>
+
+    <string name="onboarding_title">नेपाली किबोर्ड सेटअप गर्नुहोस्</string>
+    <string name="onboarding_skip">छोड्नुहोस्</string>
+    <string name="onboarding_next">अर्को</string>
+    <string name="onboarding_back">पछाडि</string>
+    <string name="onboarding_done">टाइप गर्न सुरु गर्नुहोस्</string>
+
+    <string name="onboarding_step1_title">स्वागत</string>
+    <string name="onboarding_step1_body">नेपाली तीन तरिकाले टाइप गर्नुहोस्: देवनागरी लेआउट, पूरा अङ्ग्रेजी QWERTY लेआउट, वा “namaste” जस्तो रोमन नेपाली लेख्दै नमस्ते बनाउन दिनुहोस्।</string>
+    <string name="onboarding_step2_title">किबोर्ड सक्रिय गर्नुहोस्</string>
+    <string name="onboarding_step2_body">Android ले किबोर्ड आफैँ सक्रिय गर्न भन्छ। सिस्टम इनपुट-विधि सेटिङ खोलेर “नेपाली किबोर्ड” सक्रिय गर्नुहोस्।</string>
+    <string name="onboarding_step2_action">किबोर्ड सेटिङ खोल्नुहोस्</string>
+
+    <string name="onboarding_step3_title">किबोर्ड छान्नुहोस्</string>
+    <string name="onboarding_step3_body">अब नेपाली किबोर्डलाई आफ्नो सक्रिय इनपुट विधिका रूपमा छान्नुहोस्। ग्लोब कुञ्जीले जहिले पनि फेर्न सक्नुहुन्छ।</string>
+    <string name="onboarding_step3_action">इनपुट विधि छान्नुहोस्</string>
+
+    <string name="onboarding_step4_title">प्रयोग गरी हेर्नुहोस्</string>
+    <string name="onboarding_step4_body">तलको फाँटमा थिचेर “dhanyabad” वा “mero desh” टाइप गर्नुहोस्। सुझाव पट्टीले पहिले रोमन रूप, त्यसपछि उत्तम देवनागरी मिलान, अनि शब्दकोशका विकल्प देखाउँछ।</string>
+
+    <string name="sandbox_hint">जे पनि टाइप गर्नुहोस् — केही सुरक्षित हुँदैन</string>
+    <string name="sandbox_clear">खाली गर्नुहोस्</string>
+    <string name="sandbox_note">यो फाँट केवल स्मृतिमा रहन्छ। स्क्रिन छोड्ने बित्तिकै मेटिन्छ, र किबोर्डको सिकेको मोडेल पूर्ण रूपमा बाइपास गर्छ।</string>
+
+    <string name="cd_backspace">ब्याकस्पेस। बायाँ स्वाइप गर्दा एक शब्द मेटिन्छ।</string>
+    <string name="cd_shift">सिफ्ट। दुई चोटि थिच्दा क्याप्स लक।</string>
+    <string name="cd_space">स्पेस। तान्दा कर्सर सर्छ।</string>
+    <string name="cd_enter">इन्टर</string>
+    <string name="cd_globe">इनपुट विधि फेर्नुहोस्</string>
+    <string name="cd_one_handed_toggle">एक हाते लेआउट अन/अफ</string>
+    <string name="cd_mode_switcher">नेपाली र अङ्ग्रेजीबिच फेर्नुहोस्</string>
+    <string name="cd_cursor_left">कर्सर बायाँ सार्नुहोस्</string>
+    <string name="cd_cursor_right">कर्सर दायाँ सार्नुहोस्</string>
+
+</resources>

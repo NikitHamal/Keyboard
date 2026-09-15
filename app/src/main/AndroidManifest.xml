@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+      =======================================================================
+      PRIVACY CONTRACT — READ BEFORE EDITING
+      =======================================================================
+      This application declares ZERO permissions. In particular it does NOT
+      declare android.permission.INTERNET, which means the Android platform
+      itself makes it impossible for this process to open a socket. There is
+      no telemetry, no crash reporting upload, no remote dictionary fetch.
+
+      Do not add INTERNET to this manifest. If a future feature appears to
+      need it, it does not belong in this app: the entire lexicon and the
+      entire transliteration engine are bundled and run on-device.
+      =======================================================================
+    -->
+
+    <!-- IMEs must declare this to expose the settings activity to the system
+         IME picker ("gear" button in the keyboard switcher). It grants no
+         capability beyond letting the system launch our own config UI. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <application
+        android:name=".NepaliKeyboardApp"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:hardwareAccelerated="true"
+        android:theme="@style/Theme.NepaliKeyboard"
+        android:enableOnBackInvokedCallback="true"
+        tools:targetApi="35"
+        tools:ignore="UnusedAttribute">
+
+        <!-- ============================ IME SERVICE ====================== -->
+        <!--
+          requiresBindingToSurface="false": we render into the standard input
+          view hierarchy; requesting a surface would force the slower
+          SurfaceControl path and break our Compose host.
+        -->
+        <service
+            android:name=".ime.NepaliImeService"
+            android:exported="true"
+            android:label="@string/ime_service_label"
+            android:permission="android.permission.BIND_INPUT_METHOD"
+            android:foregroundServiceType="specialUse"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+
+            <!-- Declares the IME to the system. The subtype block below
+                 advertises both English and Nepali so that the per-app
+                 language switcher can route to us, and so that
+                 InputMethodManager can pick a sensible default subtype. -->
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/ime_subtypes" />
+        </service>
+
+        <!-- ========================= SETTINGS ACTIVITY =================== -->
+        <!--
+          Exported because the system IME switcher launches it directly via
+          Settings.ACTION_INPUT_METHOD_SETTINGS -> gear icon, which uses an
+          explicit component intent from outside our process.
+        -->
+        <activity
+            android:name=".settings.SettingsActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.NepaliKeyboard.Transparent"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|density|fontScale">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- ==================== FIRST-RUN ONBOARDING ==================== -->
+        <!--
+          Not exported and not in the launcher: SettingsActivity is the single
+          entry point, and it forwards here on first launch (see its onCreate).
+          Modelling onboarding as a separate activity rather than a state of the
+          settings screen means "show it again" is a one-line startActivity from
+          anywhere — a help entry point, a post-reset flow — instead of a mode
+          the settings screen has to grow.
+
+          configChanges mirrors SettingsActivity: the wizard holds the current
+          step in saveable state and re-reads IME status on resume, so it does
+          not need a recreation on rotation — and a recreation mid-wizard would
+          flash the first step before the saved index is restored.
+        -->
+        <activity
+            android:name=".settings.OnboardingActivity"
+            android:exported="false"
+            android:label="@string/onboarding_title"
+            android:theme="@style/Theme.NepaliKeyboard"
+            android:windowSoftInputMode="adjustResize"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|density|fontScale" />
+
+        <!-- ========================= QUICK TYPING TEST =================== -->
+        <!--
+          A minimal, self-contained text field host so users (and reviewers)
+          can exercise the keyboard without leaving the app. Not exported:
+          it is an internal sandbox and retains nothing.
+        -->
+        <activity
+            android:name=".settings.TypingSandboxActivity"
+            android:exported="false"
+            android:label="@string/sandbox_title"
+            android:theme="@style/Theme.NepaliKeyboard"
+            android:windowSoftInputMode="adjustResize|stateAlwaysVisible" />
+
+        <!-- ===================== CLIPBOARD CAPTURE PROVIDER ============== -->
+        <!--
+          A no-op ContentProvider with an empty authority. Its only purpose is
+          to run before Application.onCreate() so we can register a
+          ClipboardManager.OnPrimaryClipChangedListener as early as possible,
+          which lets the in-keyboard clipboard strip capture items copied by
+          *other* apps during our process lifetime.
+        -->
+        <provider
+            android:name=".clipboard.ClipboardCaptureInitProvider"
+            android:authorities="${applicationId}.clipboardinit"
+            android:exported="false"
+            android:enabled="true"
+            android:initOrder="100" />
+    </application>
+
+</manifest>

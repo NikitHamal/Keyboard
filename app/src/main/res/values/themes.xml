@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!--
+      Window-level theme. The Compose layer owns the real palette; these values
+      exist so that (a) the window background matches before Compose draws its
+      first frame, and (b) the IME window has the correct transparent
+      decor so the keyboard can float over the host app.
+    -->
+
+    <style name="Theme.NepaliKeyboard" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/nk_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    </style>
+
+    <style name="Theme.NepaliKeyboard.Dark" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/nk_background</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+    </style>
+
+    <!--
+      Used by SettingsActivity: the activity sets up edge-to-edge Compose and we
+      want a neutral window so there is no coloured flash during the
+      activity-created -> first-frame gap.
+    -->
+    <style name="Theme.NepaliKeyboard.Transparent" parent="Theme.NepaliKeyboard">
+        <item name="android:windowIsTranslucent">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+    </style>
+
+    <!--
+      The IME window theme. android:windowIsFloating=false and a transparent
+      background let our Compose root paint the keyboard surface itself, which
+      is what allows rounded corners and the floating one-handed pill.
+    -->
+    <style name="Theme.NepaliKeyboard.Ime" parent="Theme.NepaliKeyboard">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsFloating">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowSoftInputMode">adjustNothing</item>
+    </style>
+
+</resources>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ===================================================================
+         Light palette. Seed colour is a Kathmandu-crimson (#C8102E heritage
+         red) tempered toward M3 Expressive tonal steps. These are only used
+         as the *fallback* when Material You dynamic colour is unavailable
+         (API < 31) or disabled by the user.
+         =================================================================== -->
+
+    <color name="nk_primary">#8F1D2C</color>
+    <color name="nk_on_primary">#FFFFFF</color>
+    <color name="nk_primary_container">#FFDADA</color>
+    <color name="nk_on_primary_container">#40000B</color>
+
+    <color name="nk_secondary">#775652</color>
+    <color name="nk_on_secondary">#FFFFFF</color>
+    <color name="nk_secondary_container">#FFDAD6</color>
+    <color name="nk_on_secondary_container">#2C1512</color>
+
+    <color name="nk_tertiary">#715B2E</color>
+    <color name="nk_on_tertiary">#FFFFFF</color>
+    <color name="nk_tertiary_container">#FDDFAA</color>
+    <color name="nk_on_tertiary_container">#261A00</color>
+
+    <color name="nk_error">#BA1A1A</color>
+    <color name="nk_on_error">#FFFFFF</color>
+    <color name="nk_error_container">#FFDAD6</color>
+    <color name="nk_on_error_container">#410002</color>
+
+    <color name="nk_background">#FFF8F7</color>
+    <color name="nk_on_background">#231919</color>
+    <color name="nk_surface">#FFF8F7</color>
+    <color name="nk_on_surface">#231919</color>
+    <color name="nk_surface_variant">#F4DDDB</color>
+    <color name="nk_on_surface_variant">#524342</color>
+    <color name="nk_outline">#857371</color>
+    <color name="nk_outline_variant">#D7C1BF</color>
+
+    <color name="nk_surface_container_lowest">#FFFFFF</color>
+    <color name="nk_surface_container_low">#FFF0EF</color>
+    <color name="nk_surface_container">#FCEAE8</color>
+    <color name="nk_surface_container_high">#F6E4E2</color>
+    <color name="nk_surface_container_highest">#F0DEDD</color>
+
+    <color name="nk_inverse_surface">#392E2D</color>
+    <color name="nk_inverse_on_surface">#FFEDEB</color>
+    <color name="nk_scrim">#000000</color>
+
+    <!-- Keyboard-specific semantic roles. Kept separate from the M3 roles so
+         the key geometry can stay subtle while still tracking the palette. -->
+    <color name="nk_key_background">#FFFFFF</color>
+    <color name="nk_key_background_pressed">#E4D3D2</color>
+    <color name="nk_key_modifier">#E3D1D0</color>
+    <color name="nk_key_modifier_pressed">#CFBDBC</color>
+    <color name="nk_key_accent">#8F1D2C</color>
+    <color name="nk_key_accent_pressed">#6B0F1C</color>
+    <color name="nk_key_text">#231919</color>
+    <color name="nk_key_text_on_accent">#FFFFFF</color>
+
+</resources>

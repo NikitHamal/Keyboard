@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Nepali Keyboard</string>
+    <string name="ime_service_label">Nepali Keyboard</string>
+    <string name="sandbox_title">Typing Sandbox</string>
+
+    <!-- IME subtypes -->
+    <string name="subtype_nepali">Nepali (नेपाली)</string>
+    <string name="subtype_english">English</string>
+
+    <!-- ==================== Key labels (never translated) ==================== -->
+    <string name="key_shift" translatable="false">⇧</string>
+    <string name="key_capslock" translatable="false">⇪</string>
+    <string name="key_backspace" translatable="false">⌫</string>
+    <string name="key_symbols" translatable="false">?123</string>
+    <string name="key_letters" translatable="false">ABC</string>
+    <string name="key_more_symbols" translatable="false">=\\&lt;</string>
+    <string name="key_space" translatable="false"> </string>
+    <string name="key_enter" translatable="false">⏎</string>
+    <string name="key_globe" translatable="false">🌐</string>
+
+    <string name="space_hint_english">English</string>
+    <string name="space_hint_devanagari">नेपाली</string>
+    <string name="space_hint_romanized">Romanized नेपाली</string>
+    <string name="space_hint_emoji">Emoji</string>
+
+    <!-- ==================== Navigation / chrome ==================== -->
+    <string name="tab_letters" translatable="false">अ</string>
+    <string name="tab_native" translatable="false">अ</string>
+    <string name="tab_romanized" translatable="false">Aअ</string>
+    <string name="tab_english" translatable="false">A</string>
+    <string name="tab_emoji" translatable="false">☺</string>
+    <string name="tab_clipboard" translatable="false">📋</string>
+    <string name="tab_numbers" translatable="false">123</string>
+
+    <!-- ==================== Suggestions ==================== -->
+    <string name="suggestion_literal_label">Literal</string>
+    <string name="suggestion_translit_label">Translit</string>
+    <string name="suggestion_no_results">No suggestions</string>
+
+    <!-- ==================== Clipboard ==================== -->
+    <string name="clipboard_empty">Clipboard history is empty</string>
+    <string name="clipboard_clear_all">Clear history</string>
+    <string name="clipboard_pin">Pin</string>
+    <string name="clipboard_unpin">Unpin</string>
+    <string name="clipboard_delete">Delete</string>
+    <string name="clipboard_privacy_note">History is stored on this device only and never uploaded.</string>
+    <string name="clipboard_pinned">Pinned</string>
+
+    <!-- ==================== Emoji ==================== -->
+    <string name="emoji_search_hint">Search emoji…</string>
+    <string name="emoji_category_recent">Recent</string>
+    <string name="emoji_category_smileys">Smileys</string>
+    <string name="emoji_category_people">People</string>
+    <string name="emoji_category_animals">Animals</string>
+    <string name="emoji_category_food">Food</string>
+    <string name="emoji_category_travel">Travel</string>
+    <string name="emoji_category_objects">Objects</string>
+    <string name="emoji_category_symbols">Symbols</string>
+    <string name="emoji_category_flags">Flags</string>
+
+    <!-- ==================== Settings screen ==================== -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_setup">Setup</string>
+    <string name="settings_section_layout">Layout</string>
+    <string name="settings_section_typing">Typing</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_section_feedback">Feedback</string>
+    <string name="settings_section_clipboard">Clipboard</string>
+    <string name="settings_section_privacy">Privacy</string>
+    <string name="settings_section_about">About</string>
+
+    <string name="settings_enable_ime">Enable Nepali Keyboard</string>
+    <string name="settings_enable_ime_desc">Turn on the keyboard in system settings, then select it as your current input method.</string>
+    <string name="settings_select_ime">Select input method</string>
+    <string name="settings_ime_enabled">Enabled</string>
+    <string name="settings_ime_not_enabled">Not enabled</string>
+    <string name="settings_ime_selected">Selected as current keyboard</string>
+    <string name="settings_open_sandbox">Open typing sandbox</string>
+    <string name="settings_open_sandbox_desc">Practise in a local field that stores nothing.</string>
+    <string name="settings_rerun_setup">Run setup walkthrough</string>
+    <string name="settings_rerun_setup_desc">Step through enabling and selecting the keyboard again.</string>
+
+    <string name="settings_default_mode">Default input mode</string>
+    <string name="settings_keyboard_height">Keyboard height</string>
+    <string name="settings_keyboard_height_value">%1$d dp</string>
+    <string name="settings_one_handed">One-handed mode</string>
+    <string name="settings_one_handed_desc">Shrink the keyboard toward one edge and reach the far keys more easily.</string>
+    <string name="settings_auto_capitalize">Auto-capitalise sentences</string>
+    <string name="settings_auto_capitalize_desc">Capitalise the first letter after a full stop, question mark, or exclamation mark.</string>
+    <string name="settings_double_space_period">Double-space inserts full stop</string>
+    <string name="settings_double_space_period_desc">Two quick taps on the spacebar insert “. ” and continue the sentence.</string>
+    <string name="settings_auto_correct">Suggestions while typing</string>
+    <string name="settings_auto_correct_desc">Show transliteration and lexicon candidates above the keys.</string>
+    <string name="settings_learn_words">Learn words you type</string>
+    <string name="settings_learn_words_desc">Locally increase the rank of words you accept. Disabled entirely in password fields.</string>
+
+    <string name="settings_theme_mode">Theme</string>
+    <string name="settings_theme_system">Follow system</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_theme_amoled">AMOLED black</string>
+    <string name="settings_dynamic_color">Material You dynamic colour</string>
+    <string name="settings_dynamic_color_desc">Derive the palette from your wallpaper. Requires Android 12 or newer.</string>
+    <string name="settings_dynamic_color_unavailable">Not available on this device</string>
+    <string name="settings_key_borders">Show key borders</string>
+    <string name="settings_haptic">Haptic feedback</string>
+    <string name="settings_haptic_strength">Vibration strength</string>
+    <string name="settings_sound">Keypress sound</string>
+    <string name="settings_sound_desc">Uses the system key-click volume.</string>
+    <string name="settings_clipboard_history">Capture clipboard history</string>
+    <string name="settings_clipboard_history_desc">Keep recent clipboard items available inside the keyboard.</string>
+    <string name="settings_clipboard_limit">History size</string>
+
+    <string name="settings_privacy_title">Privacy</string>
+    <string name="settings_privacy_body">This keyboard declares no network permission at all. The Android platform itself prevents the app from opening a socket, so nothing you type can be transmitted — not keystrokes, not clipboard entries, not learned words. Every dictionary and transliteration rule is bundled inside the APK and evaluated on your device.</string>
+    <string name="settings_privacy_bullet_offline">Zero internet access — enforced by the manifest, verified by the absence of android.permission.INTERNET</string>
+    <string name="settings_privacy_bullet_notelemetry">No analytics, no crash upload, no advertising identifier</string>
+    <string name="settings_privacy_bullet_password">Password fields bypass every learned model and disable suggestions</string>
+    <string name="settings_privacy_bullet_clipboard">Clipboard history never leaves the device and can be cleared instantly</string>
+    <string name="settings_privacy_bullet_backup">Cloud backup and device transfer are disabled for all app data</string>
+
+    <string name="settings_about_version">Version %1$s</string>
+    <string name="settings_about_licenses">Bundled fonts: Poppins and Noto Sans Devanagari, both licensed under the SIL Open Font License 1.1.</string>
+    <string name="settings_export_lexicon">Dictionary statistics</string>
+
+    <!-- ==================== Onboarding ==================== -->
+    <string name="onboarding_title">Set up Nepali Keyboard</string>
+    <string name="onboarding_skip">Skip</string>
+    <string name="onboarding_next">Next</string>
+    <string name="onboarding_back">Back</string>
+    <string name="onboarding_done">Start typing</string>
+
+    <string name="onboarding_step1_title">Welcome</string>
+    <string name="onboarding_step1_body">Type Nepali in three ways: a native Devanagari layout, a full English QWERTY layout, or by simply writing Romanised Nepali such as “namaste” and letting the keyboard produce नमस्ते as you type.</string>
+
+    <string name="onboarding_step2_title">Enable the keyboard</string>
+    <string name="onboarding_step2_body">Android requires you to switch the keyboard on yourself. Open the system input-method settings and turn on “Nepali Keyboard”.</string>
+    <string name="onboarding_step2_action">Open keyboard settings</string>
+
+    <string name="onboarding_step3_title">Choose the keyboard</string>
+    <string name="onboarding_step3_body">Now pick Nepali Keyboard as your active input method. You can switch back at any time with the globe key.</string>
+    <string name="onboarding_step3_action">Choose input method</string>
+
+    <string name="onboarding_step4_title">Try it out</string>
+    <string name="onboarding_step4_body">Tap the field below and type “dhanyabad” or “mero desh”. The suggestion strip shows the literal Romanised form first, then the best Devanagari match, then lexicon alternatives.</string>
+
+    <!-- ==================== Sandbox ==================== -->
+    <string name="sandbox_hint">Type anything — nothing is stored</string>
+    <string name="sandbox_clear">Clear</string>
+    <string name="sandbox_note">This field lives only in memory. It is discarded the moment you leave the screen, and it bypasses the keyboard’s learned model entirely.</string>
+
+    <!-- ==================== Descriptions for accessibility ==================== -->
+    <string name="cd_backspace">Backspace. Swipe left to delete a word.</string>
+    <string name="cd_shift">Shift. Double-tap for caps lock.</string>
+    <string name="cd_space">Space. Drag to move the cursor.</string>
+    <string name="cd_enter">Enter</string>
+    <string name="cd_globe">Switch input method</string>
+    <string name="cd_one_handed_toggle">Toggle one-handed layout</string>
+    <string name="cd_mode_switcher">Switch between Nepali and English</string>
+    <string name="cd_cursor_left">Move cursor left</string>
+    <string name="cd_cursor_right">Move cursor right</string>
+</resources>
