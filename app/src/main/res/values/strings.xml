@@ -76,6 +76,11 @@
     <string name="settings_ime_enabled">Enabled</string>
     <string name="settings_ime_not_enabled">Not enabled</string>
     <string name="settings_ime_selected">Selected as current keyboard</string>
+    <string name="settings_ime_not_selected">Not selected as current keyboard</string>
+    <string name="settings_one_handed_off">Off</string>
+    <string name="settings_one_handed_left">Left</string>
+    <string name="settings_one_handed_right">Right</string>
+    <string name="settings_haptic_system_default">System default</string>
     <string name="settings_open_sandbox">Open typing sandbox</string>
     <string name="settings_open_sandbox_desc">Practise in a local field that stores nothing.</string>
     <string name="settings_rerun_setup">Run setup walkthrough</string>
@@ -162,6 +167,9 @@
     <string name="sandbox_hint">Type anything — nothing is stored</string>
     <string name="sandbox_clear">Clear</string>
     <string name="sandbox_note">This field lives only in memory. It is discarded the moment you leave the screen, and it bypasses the keyboard’s learned model entirely.</string>
+    <string name="sandbox_open_settings">Open keyboard settings</string>
+    <string name="sandbox_choose_keyboard">Choose keyboard</string>
+    <string name="sandbox_tap_hint">Tap the field to show your current keyboard.</string>
 
     <!-- ==================== Descriptions for accessibility ==================== -->
     <string name="cd_backspace">Backspace. Swipe left to delete a word.</string>

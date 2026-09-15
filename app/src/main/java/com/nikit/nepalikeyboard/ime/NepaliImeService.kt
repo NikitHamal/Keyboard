@@ -254,10 +254,30 @@ class NepaliImeService : InputMethodService() {
             // Setting the tags here closes the gap. The in-composition effect
             // still runs afterwards and is still the authority for teardown;
             // this is belt-and-braces for the attach-time read.
+            //
+            // The window decor is tagged as well (see installDecorOwners):
+            // the recomposer is window-scoped, so it is resolved against the
+            // root view. On several OEM builds the input view is hosted
+            // inside an AlertDialog whose root is android:id/parentPanel,
+            // and tagging only this ComposeView leaves that lookup with no
+            // owner and the same crash. Tagging the decor covers that path.
             // -----------------------------------------------------------------
             setViewTreeLifecycleOwner(owner)
             setViewTreeViewModelStoreOwner(owner)
             setViewTreeSavedStateRegistryOwner(owner)
+
+            // Tag the decor now if the window already exists, and re-tag on
+            // attach for the case where the window is created after this view.
+            installDecorOwners()
+            addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+                override fun onViewAttachedToWindow(v: View) {
+                    installDecorOwners()
+                    // The root may be the dialog parentPanel on OEM ROMs;
+                    // ensure the whole chain resolves to our owner.
+                    tagViewTreeOwners(v.rootView ?: v)
+                }
+                override fun onViewDetachedFromWindow(v: View) = Unit
+            })
 
             setContent {
                 InstallKeyboardViewTreeOwners(owner) {
@@ -313,6 +333,11 @@ class NepaliImeService : InputMethodService() {
         // `onStartInput` and here, so re-bind rather than trusting the earlier
         // one. Composer state is preserved.
         input.rebind(currentInputConnection)
+
+        // The window decor is guaranteed to exist here, even on builds where
+        // it was null during onCreateInputView. Re-tag so the window-scoped
+        // recomposer lookup always resolves.
+        installDecorOwners()
 
         keyboardLifecycle.startAndResume()
         viewModel?.onInputViewShown()
@@ -465,6 +490,7 @@ class NepaliImeService : InputMethodService() {
     override fun onDestroy() {
         viewModel?.onServiceDestroying()
         uninstallClipboardCapture()
+        clearDecorOwners()
         keyboardLifecycle.destroy()
         serviceScope?.cancel()
         serviceScope = null
@@ -473,6 +499,71 @@ class NepaliImeService : InputMethodService() {
         currentEditorInfo = null
         super.onDestroy()
         Log.d(TAG, "Service destroyed")
+    }
+
+    /**
+     * Tags the IME window decor with our three view-tree owners.
+     *
+     * The Compose recomposer is window-scoped: `getWindowRecomposer(view)`
+     * resolves against the root view, not against the ComposeView itself.
+     * Tagging only the ComposeView (as done in `onCreateInputView`) leaves
+     * that lookup empty on builds where the input view is hosted inside an
+     * AlertDialog parentPanel (observed on Itel A662LM, Android 12 Go):
+     *
+     *   ViewTreeLifecycleOwner not found from LinearLayout parentPanel
+     *
+     * Tagging the decor covers that path because parentPanel walks up to the
+     * decor and finds our owner there. Safe to call repeatedly and when the
+     * window is not yet available (then it is a no-op; the attach listener
+     * installed in `onCreateInputView` retries).
+     */
+    private fun installDecorOwners() {
+        try {
+            val decor = try {
+                window?.decorView
+            } catch (t: Throwable) {
+                null
+            } ?: return
+            tagViewTreeOwners(decor)
+        } catch (t: Throwable) {
+            Log.w(TAG, "Could not tag window decor", t)
+        }
+    }
+
+    /**
+     * Tags any view with the service lifecycle owner triple.
+     *
+     * Idempotent: re-tagging the same owner is harmless, which is what makes
+     * it safe to call from both `onCreateInputView` and the attach listener.
+     */
+    private fun tagViewTreeOwners(view: View) {
+        try {
+            view.setViewTreeLifecycleOwner(keyboardLifecycle)
+            view.setViewTreeViewModelStoreOwner(keyboardLifecycle)
+            view.setViewTreeSavedStateRegistryOwner(keyboardLifecycle)
+        } catch (t: Throwable) {
+            Log.w(TAG, "Could not tag view tree owners", t)
+        }
+    }
+
+    /**
+     * Clears the decor tags so a destroyed service is never resolved through
+     * a recycled window. The per-ComposeView tags are cleared by
+     * `InstallKeyboardViewTreeOwners` on dispose; this covers the window half.
+     */
+    private fun clearDecorOwners() {
+        try {
+            val decor = try {
+                window?.decorView
+            } catch (t: Throwable) {
+                null
+            } ?: return
+            decor.setViewTreeLifecycleOwner(null)
+            decor.setViewTreeViewModelStoreOwner(null)
+            decor.setViewTreeSavedStateRegistryOwner(null)
+        } catch (t: Throwable) {
+            Log.w(TAG, "Could not clear window decor owners", t)
+        }
     }
 
     // =========================================================================

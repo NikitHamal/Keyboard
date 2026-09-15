@@ -1,5 +1,6 @@
 package com.nikit.nepalikeyboard.settings
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
@@ -62,6 +63,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -152,7 +154,7 @@ class OnboardingActivity : ComponentActivity() {
             val hostLifecycle = LocalLifecycleOwner.current
             DisposableEffect(hostLifecycle) {
                 val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_RESUME) {
+                    if (event == Lifecycle.Event.ON_START || event == Lifecycle.Event.ON_RESUME) {
                         imeState.value = readImeStatus()
                     }
                 }
@@ -236,6 +238,13 @@ class OnboardingActivity : ComponentActivity() {
         imeState.value = readImeStatus()
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            imeState.value = readImeStatus()
+        }
+    }
+
     /**
      * Finishes without marking onboarding complete.
      *
@@ -257,26 +266,61 @@ class OnboardingActivity : ComponentActivity() {
      * explanation of why each accessor is individually guarded: some OEM builds
      * throw from them under device policy, and crashing the screen the user
      * opened to fix their keyboard is the worst possible outcome.
+     *
+     * Matching is by package plus service class, not by exact IME id string:
+     * the platform persists the short flattened form (`pkg/.Service`) while
+     * `$packageName/${class.name}` builds the long form, so exact equality
+     * never matched.
      */
     private fun readImeStatus(): ImeStatus {
         val manager = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
             ?: return ImeStatus.unknown()
 
-        val ourId = "$packageName/${com.nikit.nepalikeyboard.ime.NepaliImeService::class.java.name}"
+        val serviceClass = com.nikit.nepalikeyboard.ime.NepaliImeService::class.java.name
 
         val enabled = try {
-            manager.enabledInputMethodList.any { info -> info.id == ourId }
+            manager.enabledInputMethodList.any { info ->
+                info.packageName == packageName ||
+                    info.serviceName == serviceClass ||
+                    isOurImeId(info.id)
+            }
         } catch (t: Throwable) {
             return ImeStatus.unknown()
         }
 
         val selected = try {
-            Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) == ourId
+            isOurImeSelected(
+                Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
+            )
         } catch (t: Throwable) {
             false
         }
 
         return ImeStatus(installed = true, enabled = enabled, selected = selected)
+    }
+
+    private fun isOurImeId(id: String?): Boolean {
+        if (id == null) return false
+        if (id.startsWith("$packageName/")) return true
+        return try {
+            ComponentName.unflattenFromString(id)?.packageName == packageName
+        } catch (t: Throwable) {
+            false
+        }
+    }
+
+    private fun isOurImeSelected(defaultIme: String?): Boolean {
+        if (defaultIme.isNullOrEmpty()) return false
+        return try {
+            val component = ComponentName.unflattenFromString(defaultIme)
+            if (component != null) {
+                component.packageName == packageName
+            } else {
+                defaultIme.contains(packageName)
+            }
+        } catch (t: Throwable) {
+            defaultIme.contains(packageName)
+        }
     }
 
     /**
@@ -568,7 +612,7 @@ private fun SelectStep(enabled: Boolean, selected: Boolean, onOpenPicker: () -> 
                 StatusBanner(
                     satisfied = selected,
                     satisfiedText = stringResource(R.string.settings_ime_selected),
-                    unsatisfiedText = stringResource(R.string.settings_select_ime)
+                    unsatisfiedText = stringResource(R.string.settings_ime_not_selected)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 PrimaryAction(
@@ -656,21 +700,23 @@ private fun OnboardingBody(
     }
 }
 
-/** One of the three mode labels on the welcome step. */
+/** One of the three mode labels on the welcome step. Single line by contract. */
 @Composable
 private fun ModeChip(label: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(vertical = 18.dp),
+            .padding(vertical = 18.dp, horizontal = 4.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
@@ -719,7 +765,10 @@ private fun StatusBanner(satisfied: Boolean, satisfiedText: String, unsatisfiedT
                 MaterialTheme.colorScheme.onSurface
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
-            }
+            },
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
         )
     }
 }

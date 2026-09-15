@@ -1,5 +1,6 @@
 package com.nikit.nepalikeyboard.settings
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -54,6 +56,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -178,7 +181,7 @@ class SettingsActivity : ComponentActivity() {
             val lifecycleOwner = LocalLifecycleOwner.current
             DisposableEffect(lifecycleOwner) {
                 val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_RESUME) {
+                    if (event == Lifecycle.Event.ON_START || event == Lifecycle.Event.ON_RESUME) {
                         imeState.value = readImeStatus()
                     }
                 }
@@ -215,6 +218,16 @@ class SettingsActivity : ComponentActivity() {
         imeState.value = readImeStatus()
     }
 
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        // Returning from the system IME settings restores window focus before
+        // ON_RESUME is delivered to the new composition on some OEM builds.
+        // Refreshing here is what makes the checklist flip live.
+        if (hasFocus) {
+            imeState.value = readImeStatus()
+        }
+    }
+
     /**
      * Determines whether this keyboard is installed, enabled, and active.
      *
@@ -226,15 +239,25 @@ class SettingsActivity : ComponentActivity() {
      *  * **Selected** — we are the *current* keyboard. A user can have several
      *    enabled and only one selected, so "enabled" is not sufficient to
      *    explain why the keyboard did not appear.
+     *
+     * Matching is by package plus service class, not by exact IME id string:
+     * the platform stores the id flattened to short form
+     * (`pkg/.ime.Service`) while `$packageName/${class.name}` builds the long
+     * form (`pkg/pkg.ime.Service`). Comparing exact strings therefore never
+     * matched and the screen permanently showed "Not enabled".
      */
     private fun readImeStatus(): ImeStatus {
         val manager = getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
             ?: return ImeStatus.unknown()
 
-        val ourId = "$packageName/${com.nikit.nepalikeyboard.ime.NepaliImeService::class.java.name}"
+        val serviceClass = com.nikit.nepalikeyboard.ime.NepaliImeService::class.java.name
 
         val enabled = try {
-            manager.enabledInputMethodList.any { info -> info.id == ourId }
+            manager.enabledInputMethodList.any { info ->
+                info.packageName == packageName ||
+                    info.serviceName == serviceClass ||
+                    isOurImeId(info.id)
+            }
         } catch (t: Throwable) {
             // Some OEM builds throw from these accessors when the IME service
             // has been disabled by device policy. Treat as "unknown" rather than
@@ -243,12 +266,51 @@ class SettingsActivity : ComponentActivity() {
         }
 
         val selected = try {
-            Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD) == ourId
+            isOurImeSelected(
+                Settings.Secure.getString(contentResolver, Settings.Secure.DEFAULT_INPUT_METHOD)
+            )
         } catch (t: Throwable) {
             false
         }
 
         return ImeStatus(installed = true, enabled = enabled, selected = selected)
+    }
+
+    /**
+     * True when an IME id string refers to this app, in either flattened form.
+     *
+     * Accepts the long form, the short form, and anything unflattenable that
+     * still names our package — OEM builds are inconsistent about which form
+     * they persist.
+     */
+    private fun isOurImeId(id: String?): Boolean {
+        if (id == null) return false
+        if (id.startsWith("$packageName/")) return true
+        return try {
+            ComponentName.unflattenFromString(id)?.packageName == packageName
+        } catch (t: Throwable) {
+            false
+        }
+    }
+
+    /**
+     * True when the system's default-IME string names this keyboard.
+     *
+     * Parsed via [ComponentName.unflattenFromString] rather than exact string
+     * equality, so both `pkg/.Service` and `pkg/pkg.Service` match.
+     */
+    private fun isOurImeSelected(defaultIme: String?): Boolean {
+        if (defaultIme.isNullOrEmpty()) return false
+        return try {
+            val component = ComponentName.unflattenFromString(defaultIme)
+            if (component != null) {
+                component.packageName == packageName
+            } else {
+                defaultIme.contains(packageName)
+            }
+        } catch (t: Throwable) {
+            defaultIme.contains(packageName)
+        }
     }
 
     /**
@@ -497,7 +559,7 @@ private fun SettingsScreen(
                 SliderRow(
                     title = stringResource(R.string.settings_haptic_strength),
                     valueLabel = if (prefs.hapticStrength == KeyboardPreferences.HAPTIC_SYSTEM_DEFAULT) {
-                        stringResource(R.string.settings_theme_system)
+                        stringResource(R.string.settings_haptic_system_default)
                     } else {
                         prefs.hapticStrength.toString()
                     },
@@ -551,9 +613,9 @@ private fun SettingsScreen(
                 ChoiceRow(
                     title = stringResource(R.string.settings_one_handed),
                     options = listOf(
-                        OneHandedSide.NONE to stringResource(R.string.settings_theme_system),
-                        OneHandedSide.LEFT to stringResource(R.string.tab_english),
-                        OneHandedSide.RIGHT to stringResource(R.string.tab_native)
+                        OneHandedSide.NONE to stringResource(R.string.settings_one_handed_off),
+                        OneHandedSide.LEFT to stringResource(R.string.settings_one_handed_left),
+                        OneHandedSide.RIGHT to stringResource(R.string.settings_one_handed_right)
                     ),
                     selected = prefs.oneHandedSide,
                     onSelect = { side -> onPreferenceChange { it.saveOneHandedSide(side) } }
@@ -616,7 +678,11 @@ private fun SetupSection(
 
         StatusRow(
             satisfied = status.selected,
-            text = stringResource(R.string.settings_ime_selected)
+            text = if (status.selected) {
+                stringResource(R.string.settings_ime_selected)
+            } else {
+                stringResource(R.string.settings_ime_not_selected)
+            }
         )
 
         Spacer(modifier = Modifier.height(14.dp))
@@ -677,7 +743,7 @@ private fun SetupSection(
     }
 }
 
-/** One line of the setup checklist. */
+/** One line of the setup checklist. Single line by contract: no wrapping. */
 @Composable
 private fun StatusRow(satisfied: Boolean, text: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -699,7 +765,10 @@ private fun StatusRow(satisfied: Boolean, text: String) {
                 MaterialTheme.colorScheme.onSurface
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
-            }
+            },
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
         )
     }
 }
@@ -730,17 +799,22 @@ private fun ActionCard(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             if (subtitle != null) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
+        Spacer(modifier = Modifier.width(12.dp))
         Icon(
             imageVector = Icons.Filled.OpenInNew,
             contentDescription = null,
@@ -750,7 +824,7 @@ private fun ActionCard(
     }
 }
 
-/** A section title. */
+/** A section title. Single line by contract. */
 @Composable
 private fun SectionHeader(text: String) {
     Text(
@@ -758,6 +832,8 @@ private fun SectionHeader(text: String) {
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.primary,
         fontWeight = FontWeight.SemiBold,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
         modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 22.dp, bottom = 6.dp)
     )
 }
@@ -792,14 +868,18 @@ private fun SwitchRow(
                     MaterialTheme.colorScheme.onSurface
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
-                }
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             if (subtitle != null) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -840,12 +920,17 @@ private fun SliderRow(
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
+            Spacer(modifier = Modifier.width(12.dp))
             Text(
                 text = valueLabel,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
         Slider(
@@ -859,12 +944,14 @@ private fun SliderRow(
 }
 
 /**
- * A row of mutually exclusive choices.
+ * A single-select list rendered as full-width rows.
  *
- * Used for enumerations with three or four values. A dropdown would be the
- * conventional Material choice, but a dropdown hides the alternatives behind a
- * tap and these particular settings — input mode, theme, one-handed side — are
- * ones a user compares rather than knows in advance.
+ * Previously a horizontal row of equally-weighted chips. With four options
+ * ("Follow system" … "AMOLED black") each chip was ~80 dp wide on a 360 dp
+ * phone, so labels wrapped mid-phrase ("Follow" / "system") and the grid
+ * looked broken. Full-width rows give every label the whole line: titles stay
+ * on one line with ellipsis, there is no wrapping, no overlap, and the
+ * control reads as a modern single-select group.
  *
  * ### Why the options are `List<Pair<T, String>>`
  *
@@ -884,38 +971,44 @@ private fun <T> ChoiceRow(
         Text(
             text = title,
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((value, label) in options) {
                 val isSelected = value == selected
-                Box(
+                Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(9.dp))
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
                         .background(
                             if (isSelected) {
-                                MaterialTheme.colorScheme.primary
+                                MaterialTheme.colorScheme.primaryContainer
                             } else {
                                 MaterialTheme.colorScheme.surfaceVariant
                             }
                         )
                         .clickable { onSelect(value) }
-                        .padding(vertical = 9.dp),
-                    contentAlignment = Alignment.Center
+                        .padding(horizontal = 14.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = label,
                         style = MaterialTheme.typography.labelLarge,
                         color = if (isSelected) {
-                            MaterialTheme.colorScheme.onPrimary
+                            MaterialTheme.colorScheme.onPrimaryContainer
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
-                        }
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
+                    )
+                    RadioButton(
+                        selected = isSelected,
+                        onClick = { onSelect(value) }
                     )
                 }
             }
@@ -959,7 +1052,8 @@ private fun PrivacySection() {
                 Text(
                     text = stringResource(bullet),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f)
                 )
             }
         }

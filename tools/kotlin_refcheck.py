@@ -430,6 +430,8 @@ ALLOW |= set(
     windowInsetsPadding calculateTopPadding finish
     tween fadeIn fadeOut slideInHorizontally slideOutHorizontally
     mutableIntStateOf showInputMethodPicker verticalScroll
+    decorView addOnAttachStateChangeListener onViewAttachedToWindow onViewDetachedFromWindow
+    focusRequester show clearFocus requestFocus
     """.split()
 )
 

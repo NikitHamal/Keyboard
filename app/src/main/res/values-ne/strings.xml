@@ -59,6 +59,11 @@
     <string name="settings_ime_enabled">सक्रिय</string>
     <string name="settings_ime_not_enabled">सक्रिय छैन</string>
     <string name="settings_ime_selected">हालको किबोर्डका रूपमा छानिएको</string>
+    <string name="settings_ime_not_selected">हालको किबोर्डका रूपमा छानिएको छैन</string>
+    <string name="settings_one_handed_off">बन्द</string>
+    <string name="settings_one_handed_left">बायाँ</string>
+    <string name="settings_one_handed_right">दायाँ</string>
+    <string name="settings_haptic_system_default">सिस्टम पूर्वनिर्धारित</string>
     <string name="settings_open_sandbox">टाइपिङ अभ्यास खोल्नुहोस्</string>
     <string name="settings_open_sandbox_desc">केही पनि सुरक्षित नगर्ने स्थानीय फाँटमा अभ्यास गर्नुहोस्।</string>
     <string name="settings_rerun_setup">सेटअप मार्गदर्शन फेरि चलाउनुहोस्</string>
@@ -141,6 +146,9 @@
     <string name="sandbox_hint">जे पनि टाइप गर्नुहोस् — केही सुरक्षित हुँदैन</string>
     <string name="sandbox_clear">खाली गर्नुहोस्</string>
     <string name="sandbox_note">यो फाँट केवल स्मृतिमा रहन्छ। स्क्रिन छोड्ने बित्तिकै मेटिन्छ, र किबोर्डको सिकेको मोडेल पूर्ण रूपमा बाइपास गर्छ।</string>
+    <string name="sandbox_open_settings">किबोर्ड सेटिङ खोल्नुहोस्</string>
+    <string name="sandbox_choose_keyboard">किबोर्ड छान्नुहोस्</string>
+    <string name="sandbox_tap_hint">हालको किबोर्ड देखाउन फाँटमा थिच्नुहोस्।</string>
 
     <string name="cd_backspace">ब्याकस्पेस। बायाँ स्वाइप गर्दा एक शब्द मेटिन्छ।</string>
     <string name="cd_shift">सिफ्ट। दुई चोटि थिच्दा क्याप्स लक।</string>

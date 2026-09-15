@@ -55,11 +55,15 @@
           -> getWindowRecomposer() -> createLifecycleAwareWindowRecomposer()
           throws before our InstallKeyboardViewTreeOwners composable can run
           (it only executes *inside* the composition that is failing to
-          start). The fix is two-sided and both halves are required:
+          start). The fix is three-sided and all parts are required:
 
             1. this attribute, so the window is declared non-floating; and
             2. NepaliImeService tagging the ComposeView directly in
-               onCreateInputView, before the system attaches it.
+               onCreateInputView, before the system attaches it; and
+            3. NepaliImeService tagging the window decor itself, because the
+               recomposer is window-scoped and is resolved against the root
+               view — tagging only the child leaves the parentPanel lookup
+               with no owner on several OEM builds (Itel A662LM, Android 12).
         -->
         <service
             android:name=".ime.NepaliImeService"
@@ -126,16 +130,17 @@
 
         <!-- ========================= QUICK TYPING TEST =================== -->
         <!--
-          A minimal, self-contained text field host so users (and reviewers)
-          can exercise the keyboard without leaving the app. Not exported:
-          it is an internal sandbox and retains nothing.
+          A plain text field that summons the real system keyboard, so users
+          (and reviewers) can exercise the installed IME without leaving the
+          app. Not exported: it is an internal sandbox and retains nothing.
+          adjustResize so the system keyboard shifts the field above it.
         -->
         <activity
             android:name=".settings.TypingSandboxActivity"
             android:exported="false"
             android:label="@string/sandbox_title"
             android:theme="@style/Theme.NepaliKeyboard"
-            android:windowSoftInputMode="adjustResize|stateAlwaysVisible" />
+            android:windowSoftInputMode="adjustResize" />
 
         <!-- ========================= CRASH / DEBUG ======================= -->
         <!--
