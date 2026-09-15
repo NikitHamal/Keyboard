@@ -1,7 +1,6 @@
 package com.nikit.nepalikeyboard.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -15,24 +14,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Backspace
-import androidx.compose.material.icons.outlined.ExpandLess
-import androidx.compose.material.icons.outlined.ExpandMore
-import androidx.compose.material.icons.outlined.SwapHoriz
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -173,6 +163,17 @@ private fun KeyboardSurface(
 
     val gaps = KeyGaps()
 
+    // Whether the strip shows the feature toolbar instead of candidates.
+    // Ephemeral UI state, like the emoji panel's query: scoped to this
+    // composition, not the shared state object.
+    var toolbarExpanded by remember { mutableStateOf(false) }
+
+    // Opening a panel implies leaving the strip behind: the toolbar collapses
+    // so candidates are showing again when the user returns to the keys.
+    LaunchedEffect(uiState.mode) {
+        if (uiState.mode.isPanelMode) toolbarExpanded = false
+    }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -196,6 +197,11 @@ private fun KeyboardSurface(
                     composingInput = uiState.composingInput,
                     modeHint = modeHintFor(uiState),
                     showSuggestions = uiState.showSuggestions,
+                    toolbarExpanded = toolbarExpanded,
+                    onToolbarToggle = { toolbarExpanded = !toolbarExpanded },
+                    uiState = uiState,
+                    viewModel = viewModel,
+                    serviceActions = serviceActions,
                     onSuggestionCommitted = viewModel::onSuggestionCommitted
                 )
 
@@ -229,6 +235,11 @@ private fun KeyboardSurface(
                             onClose = { viewModel.switchMode(uiState.lastKeyMode) },
                             modifier = Modifier.weight(1f)
                         )
+
+                        PanelActionBar(
+                            uiState = uiState,
+                            viewModel = viewModel
+                        )
                     }
 
                     InputMode.CLIPBOARD -> {
@@ -242,22 +253,22 @@ private fun KeyboardSurface(
                             onClose = { viewModel.switchMode(uiState.lastKeyMode) },
                             modifier = Modifier.weight(1f)
                         )
+
+                        PanelActionBar(
+                            uiState = uiState,
+                            viewModel = viewModel
+                        )
                     }
 
                     else -> {
                         KeyGrid(
                             uiState = uiState,
                             viewModel = viewModel,
+                            serviceActions = serviceActions,
                             modifier = Modifier.weight(1f)
                         )
                     }
                 }
-
-                BottomBar(
-                    uiState = uiState,
-                    viewModel = viewModel,
-                    serviceActions = serviceActions
-                )
             }
 
             if (uiState.oneHanded == OneHandedSide.LEFT) {
@@ -292,17 +303,15 @@ private fun modeHintFor(uiState: KeyboardUiState): String = when {
  *
  * ### Row structure
  *
- * Every row is `[leading modifier] + content keys + [trailing modifier]`. The
- * leading modifier is shift or the glyph toggle; the trailing is backspace. The
- * weights follow a physical keyboard closely enough to feel familiar: shift 1.4,
- * backspace 1.5, content keys 1.0 each.
+ * Every row is `[leading modifier] + content keys + [trailing modifier]`,
+ * following the platform convention: the letter rows carry no leading
+ * modifier, the last content row carries shift on the left and backspace on
+ * the right, and the `?123` layer toggle lives on the bottom row next to the
+ * spacebar. On the symbol layers the last row's leading slot holds the
+ * `=\<` key instead of shift, because there is no case to shift there.
  *
- * ### Shift placement
- *
- * Shift goes on row 1 and the glyph toggle on row 2, which is the arrangement
- * every platform keyboard uses. Both are placed by *index* rather than by
- * looking up a specific key, so the arrangement survives a layout change that
- * adds or reorders keys.
+ * Modifiers are placed by *index* rather than by looking up a specific key,
+ * so the arrangement survives a layout change that adds or reorders keys.
  *
  * ### Shift behaviour
  *
@@ -310,11 +319,19 @@ private fun modeHintFor(uiState: KeyboardUiState): String = when {
  * independent vowels and aspirates — while on the Latin layout it changes case.
  * Both are handled inside [KeyboardLayouts], so the grid has no knowledge of
  * which is happening.
+ *
+ * ### Number hints
+ *
+ * The top letter row carries small superscript digits, and a long press on one
+ * commits the digit. Digits are always the Latin 0-9 even on the Devanagari
+ * layout, because the fields where a long-press digit matters — OTP codes,
+ * PINs, phone numbers — expect ASCII digits.
  */
 @Composable
 private fun KeyGrid(
     uiState: KeyboardUiState,
     viewModel: KeyboardViewModel,
+    serviceActions: ServiceActions,
     modifier: Modifier = Modifier
 ) {
     val gaps = KeyGaps()
@@ -324,6 +341,7 @@ private fun KeyGrid(
         moreSymbolsLayer = uiState.moreSymbolsLayer,
         shift = uiState.shift
     )
+    val onSymbolsLayer = uiState.symbolsLayer || uiState.moreSymbolsLayer
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -336,21 +354,29 @@ private fun KeyGrid(
                 shift = uiState.shift,
                 showBorder = uiState.showKeyBorders,
                 gaps = gaps,
+                hints = if (rowIndex == 0 && !onSymbolsLayer) NUMBER_HINTS else null,
+                onLongPressHint = if (rowIndex == 0 && !onSymbolsLayer) {
+                    { hint -> viewModel.onKeyPressed(KeyboardKey.Commit(hint)) }
+                } else {
+                    null
+                },
                 leading = {
-                    when (rowIndex) {
-                        1 -> ShiftKey(
-                            shift = uiState.shift,
-                            showBorder = uiState.showKeyBorders,
-                            gaps = gaps,
-                            viewModel = viewModel
-                        )
-                        2 -> GlyphToggleKey(
-                            uiState = uiState,
-                            showBorder = uiState.showKeyBorders,
-                            gaps = gaps,
-                            viewModel = viewModel
-                        )
-                        else -> Unit
+                    if (isLastRow) {
+                        if (onSymbolsLayer) {
+                            GlyphToggleKey(
+                                uiState = uiState,
+                                showBorder = uiState.showKeyBorders,
+                                gaps = gaps,
+                                viewModel = viewModel
+                            )
+                        } else {
+                            ShiftKey(
+                                shift = uiState.shift,
+                                showBorder = uiState.showKeyBorders,
+                                gaps = gaps,
+                                viewModel = viewModel
+                            )
+                        }
                     }
                 },
                 trailing = {
@@ -369,6 +395,7 @@ private fun KeyGrid(
         SpaceRow(
             uiState = uiState,
             viewModel = viewModel,
+            serviceActions = serviceActions,
             pointsPerCluster = with(LocalDensity.current) { SPACE_DRAG_DP_PER_CLUSTER.dp.toPx() },
             gaps = gaps
         )
@@ -376,16 +403,23 @@ private fun KeyGrid(
 }
 
 /**
- * The bottom row: the mode switcher, the spacebar, the emoji and clipboard
- * entries, and Enter.
+ * The superscript digits shown on the top letter row.
  *
- * ### Why this owns its own `Row`
+ * Positional, not per-key: the top row of every letter layout is ten keys, so
+ * index maps to digit directly. Symbol layers already show their digits as
+ * glyphs and never receive hints.
+ */
+private val NUMBER_HINTS: List<String> =
+    listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0")
+
+/**
+ * The bottom row: the layer toggle, the mode switcher, the spacebar, the
+ * input-method globe, and Enter.
  *
- * Every key in it is a `RowScope` extension, because they read `weight`. That
- * makes this composable the natural place to provide the scope, rather than
- * requiring the caller to wrap the call in a `Row` and remember to match the
- * height and padding — two pieces of styling that would otherwise be duplicated
- * at each call site.
+ * This mirrors the platform bottom row — `?123`, language, space, enter —
+ * with the mode switcher in the language slot's neighbour position, because
+ * this keyboard has three modes where the platform keyboard has one. Emoji
+ * and clipboard live in the strip toolbar, not here, for the same reason.
  *
  * ### The spacebar's drag behaviour
  *
@@ -404,6 +438,7 @@ private fun KeyGrid(
 private fun SpaceRow(
     uiState: KeyboardUiState,
     viewModel: KeyboardViewModel,
+    serviceActions: ServiceActions,
     pointsPerCluster: Float,
     gaps: KeyGaps
 ) {
@@ -414,6 +449,14 @@ private fun SpaceRow(
             .height(SpaceRowHeight),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // The layer toggle: ?123 on the letter layers, ABC on the symbols.
+        GlyphToggleKey(
+            uiState = uiState,
+            showBorder = uiState.showKeyBorders,
+            gaps = gaps,
+            viewModel = viewModel
+        )
+
         // The mode switcher.
         ModeSwitcherKey(
             uiState = uiState,
@@ -430,24 +473,16 @@ private fun SpaceRow(
             gaps = gaps
         )
 
-        // Emoji.
+        // The globe: switches input method. Long-pressing the mode switcher
+        // opens the picker dialog instead; the two are different actions and
+        // both are kept, matching the platform convention.
         RowScopeModifierKey(
-            icon = Icons.Filled.EmojiEmotions,
-            contentDescription = stringResource(R.string.tab_emoji),
+            icon = Icons.Filled.Language,
+            contentDescription = stringResource(R.string.cd_globe),
             weight = 1.2f,
             showBorder = uiState.showKeyBorders,
             gaps = gaps,
-            onPress = { viewModel.switchMode(InputMode.EMOJI) }
-        )
-
-        // Clipboard.
-        RowScopeModifierKey(
-            icon = Icons.Filled.ContentPaste,
-            contentDescription = stringResource(R.string.tab_clipboard),
-            weight = 1.2f,
-            showBorder = uiState.showKeyBorders,
-            gaps = gaps,
-            onPress = { viewModel.switchMode(InputMode.CLIPBOARD) }
+            onPress = { serviceActions.switchToNextInputMethod() }
         )
 
         // Enter.
@@ -606,7 +641,9 @@ private const val SPACE_DRAG_DP_PER_CLUSTER = 30f
  * A single tap cycles OFF -> SHIFTED -> LOCKED -> OFF. The engaged state is
  * signalled by the accent colour, which is how every platform keyboard shows an
  * active shift — clearer than a glyph change alone, because caps lock and shift
- * use different glyphs but the same "this is on" colour.
+ * use different glyphs but the same "this is on" colour. The glyph itself is a
+ * filled arrow icon rather than a text character, so it renders at icon weight
+ * instead of washing out at text size.
  */
 @Composable
 private fun RowScope.ShiftKey(
@@ -618,17 +655,12 @@ private fun RowScope.ShiftKey(
     val colors = KeyboardTheme.colors
     val haptics = LocalHapticFeedback.current
 
-    val label = when (shift) {
-        ShiftState.OFF -> stringResource(R.string.key_shift)
-        ShiftState.SHIFTED -> stringResource(R.string.key_shift)
-        ShiftState.LOCKED -> stringResource(R.string.key_capslock)
-    }
-
     ModifierKey(
-        label = label,
-        weight = 1.4f,
+        label = "",
+        weight = 1.5f,
         showBorder = showBorder,
         gaps = gaps,
+        icon = Icons.Filled.ArrowUpward,
         contentDescription = stringResource(R.string.cd_shift),
         background = if (shift.isUppercase) colors.accentBackground else colors.modifierBackground,
         pressedBackground = if (shift.isUppercase) {
@@ -849,108 +881,43 @@ private fun nextKeyMode(current: InputMode): InputMode = when (current) {
 }
 
 /**
- * The bar beneath the key grid holding the utility keys that do not belong on a
- * row: the globe, the one-handed controls, and settings.
+ * The bar beneath the emoji and clipboard panels: ABC to return to the keys,
+ * backspace to delete without leaving the panel.
  *
- * ### Why the globe and the mode switcher both exist
- *
- * They do different things and both are needed. The mode switcher changes *this*
- * keyboard's layout; the globe changes which keyboard is active at all. A user
- * with one keyboard installed never needs the globe, and a user with three
- * installed never wants the mode cycle to do the globe's job.
+ * This is the platform convention — a panel without a visible way out forces
+ * the user to discover the mode key, and a panel without backspace forces a
+ * round trip to the keys for every correction. Both actions are one tap here.
  */
 @Composable
-private fun BottomBar(
+private fun PanelActionBar(
     uiState: KeyboardUiState,
-    viewModel: KeyboardViewModel,
-    serviceActions: ServiceActions
+    viewModel: KeyboardViewModel
 ) {
+    val gaps = KeyGaps()
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(26.dp)
-            .padding(horizontal = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+            .padding(horizontal = gaps.outer, vertical = gaps.row)
+            .height(SpaceRowHeight),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        UtilityIcon(
-            icon = Icons.Filled.Language,
-            contentDescription = stringResource(R.string.cd_globe),
-            onPress = { serviceActions.switchToNextInputMethod() }
+        ModifierKey(
+            label = stringResource(R.string.key_letters),
+            weight = 1.5f,
+            showBorder = uiState.showKeyBorders,
+            gaps = gaps,
+            contentDescription = stringResource(R.string.cd_back_to_keyboard),
+            style = KeyboardTypography.ModifierKey,
+            onPress = { viewModel.switchMode(uiState.lastKeyMode) }
         )
-
-        UtilityIcon(
-            icon = if (uiState.oneHanded == OneHandedSide.NONE) {
-                Icons.Outlined.ExpandLess
-            } else {
-                Icons.Outlined.ExpandMore
-            },
-            contentDescription = stringResource(R.string.cd_one_handed_toggle),
-            active = uiState.oneHanded != OneHandedSide.NONE,
-            onPress = { viewModel.onOneHandedToggled() }
-        )
-
-        if (uiState.oneHanded != OneHandedSide.NONE) {
-            // Only shown while one-handed mode is engaged, so the bar does not
-            // carry three controls that do nothing in the common case.
-            UtilityIcon(
-                icon = Icons.Outlined.SwapHoriz,
-                contentDescription = stringResource(R.string.settings_one_handed),
-                onPress = { viewModel.onOneHandedSwapped() }
-            )
-            UtilityIcon(
-                icon = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-                contentDescription = stringResource(R.string.cd_cursor_left),
-                onPress = { viewModel.onKeyPressed(KeyboardKey.CursorLeft) }
-            )
-            UtilityIcon(
-                icon = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = stringResource(R.string.cd_cursor_right),
-                onPress = { viewModel.onKeyPressed(KeyboardKey.CursorRight) }
-            )
-        }
 
         Spacer(modifier = Modifier.weight(1f))
 
-        UtilityIcon(
-            icon = Icons.Filled.Settings,
-            contentDescription = stringResource(R.string.settings_title),
-            onPress = { serviceActions.openAppSettings() }
-        )
-    }
-}
-
-/**
- * A small, chromeless icon button for the utility bar.
- *
- * Not a Material `IconButton`: those carry a 48 dp minimum touch target and a
- * ripple, both wrong for a 26 dp bar. The targets here are deliberately compact
- * because they are secondary affordances — a user who mistaps one is not
- * blocked, unlike a mistyped character.
- */
-@Composable
-private fun UtilityIcon(
-    icon: ImageVector,
-    contentDescription: String,
-    modifier: Modifier = Modifier,
-    active: Boolean = false,
-    onPress: () -> Unit
-) {
-    val colors = KeyboardTheme.colors
-    Box(
-        modifier = modifier
-            .width(38.dp)
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(7.dp))
-            .semantics { this.contentDescription = contentDescription }
-            .clickable(onClick = onPress),
-        contentAlignment = Alignment.Center
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (active) colors.accentBackground else colors.tabInactive,
-            modifier = Modifier.width(17.dp).height(17.dp)
+        BackspaceKey(
+            showBorder = uiState.showKeyBorders,
+            gaps = gaps,
+            viewModel = viewModel
         )
     }
 }

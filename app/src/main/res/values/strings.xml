@@ -21,9 +21,8 @@
 
     <string name="space_hint_english">English</string>
     <string name="space_hint_devanagari">नेपाली</string>
-    <string name="space_hint_romanized">Romanized नेपाली</string>
+    <string name="space_hint_romanized">Romanized</string>
     <string name="space_hint_emoji">Emoji</string>
-
     <!-- ==================== Navigation / chrome ==================== -->
     <string name="tab_letters" translatable="false">अ</string>
     <string name="tab_native" translatable="false">अ</string>
@@ -194,4 +193,9 @@
     <string name="cd_mode_switcher">Switch between Nepali and English</string>
     <string name="cd_cursor_left">Move cursor left</string>
     <string name="cd_cursor_right">Move cursor right</string>
+    <string name="cd_toolbar_expand">More features</string>
+    <string name="cd_toolbar_collapse">Hide toolbar</string>
+    <string name="cd_back_to_keyboard">Back to keyboard</string>
+    <string name="cd_emoji_panel">Emoji</string>
+    <string name="cd_clipboard_panel">Clipboard history</string>
 </resources>

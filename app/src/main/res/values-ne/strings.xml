@@ -159,6 +159,11 @@
     <string name="cd_mode_switcher">नेपाली र अङ्ग्रेजीबिच फेर्नुहोस्</string>
     <string name="cd_cursor_left">कर्सर बायाँ सार्नुहोस्</string>
     <string name="cd_cursor_right">कर्सर दायाँ सार्नुहोस्</string>
+    <string name="cd_toolbar_expand">थप सुविधाहरू</string>
+    <string name="cd_toolbar_collapse">टुलबार लुकाउनुहोस्</string>
+    <string name="cd_back_to_keyboard">किबोर्डमा फर्कनुहोस्</string>
+    <string name="cd_emoji_panel">इमोजी</string>
+    <string name="cd_clipboard_panel">क्लिपबोर्ड इतिहास</string>
 
     <!-- Auto-update -->
     <string name="update_checking">अपडेट जाँच गर्दै…</string>

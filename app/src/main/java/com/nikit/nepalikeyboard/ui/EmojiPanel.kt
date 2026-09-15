@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +20,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -44,6 +46,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.nikit.nepalikeyboard.R
 import com.nikit.nepalikeyboard.ui.theme.KeyboardTheme
 import com.nikit.nepalikeyboard.ui.theme.KeyboardTypography
@@ -206,10 +209,11 @@ private fun EmojiSearchField(
 /**
  * The category tab strip.
  *
- * Horizontally scrollable rather than evenly divided: nine tabs on a phone
- * would each be about 40 dp wide, which is narrower than the label "Symbols"
- * and forces either truncation or an unreadable font size. Scrolling costs one
- * gesture and keeps every label legible.
+ * Icon tabs, not text labels: nine text tabs on a phone are each about 40 dp
+ * wide, which truncates every label past "Smil…". Icons need no truncation in
+ * any language, and the content description still carries the spoken label for
+ * accessibility. The strip scrolls horizontally so every tab keeps a full
+ * 48 dp touch target.
  */
 @Composable
 private fun CategoryTabs(
@@ -219,6 +223,7 @@ private fun CategoryTabs(
     onCategorySelected: (String) -> Unit
 ) {
     val colors = KeyboardTheme.colors
+    val scrollState = rememberScrollState()
 
     // Recents is prepended only when it has content. See the file header.
     val visible = remember(recentEmoji, categories) {
@@ -228,7 +233,8 @@ private fun CategoryTabs(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(32.dp)
+            .height(44.dp)
+            .horizontalScroll(scrollState)
             .padding(horizontal = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -248,16 +254,10 @@ private fun CategoryTabs(
                 }
             }
 
-            Text(
-                text = label,
-                style = KeyboardTypography.SuggestionHint,
-                color = if (selected) colors.accentBackground else colors.tabInactive,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
+            Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .clip(RoundedCornerShape(7.dp))
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(10.dp))
                     .background(
                         if (selected) colors.modifierBackground else Color.Transparent
                     )
@@ -267,12 +267,42 @@ private fun CategoryTabs(
                             awaitFirstDown(requireUnconsumed = false)
                             onCategorySelected(id)
                         }
-                    }
-                    .padding(vertical = 6.dp)
-            )
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = CATEGORY_ICONS[id] ?: "❓",
+                    style = KeyboardTypography.Emoji.copy(fontSize = 22.sp),
+                    color = if (selected) {
+                        colors.keyText
+                    } else {
+                        colors.tabInactive
+                    },
+                    maxLines = 1
+                )
+            }
         }
     }
 }
+
+/**
+ * The representative glyph per category tab.
+ *
+ * Emoji rendered as text through the system colour font, like the grid cells
+ * themselves — so the tab always matches the platform's current emoji set
+ * with no image assets to ship or keep current.
+ */
+private val CATEGORY_ICONS: Map<String, String> = mapOf(
+    RECENT_CATEGORY_ID to "🕒",
+    "smileys" to "😀",
+    "people" to "🧑",
+    "animals" to "🐻",
+    "food" to "🍔",
+    "travel" to "✈️",
+    "objects" to "💡",
+    "symbols" to "🔣",
+    "flags" to "🏁"
+)
 
 /**
  * The scrolling grid of emoji.

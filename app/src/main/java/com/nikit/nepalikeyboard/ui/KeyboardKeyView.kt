@@ -38,6 +38,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.nikit.nepalikeyboard.ime.KeyboardKey
 import com.nikit.nepalikeyboard.ime.KeyboardLayouts
 import com.nikit.nepalikeyboard.ime.ShiftState
@@ -100,6 +101,15 @@ fun KeyboardKeyView(
     /** Fired on press. Must not suspend and must not allocate. */
     onPress: () -> Unit = {},
     /**
+     * Whether [onPress] fires on finger-down (true) or on release (false).
+     *
+     * Keys with a long-press alternate use false: firing on down would insert
+     * the letter *and* the alternate on a hold ("q" then "1"). Deferring to
+     * release means a tap still commits in one gesture and a hold commits
+     * only the alternate — which is the platform behaviour.
+     */
+    pressOnDown: Boolean = true,
+    /**
      * Fired while a horizontal or vertical drag is in progress, with the delta
      * in pixels since the previous report. Returning true claims the gesture,
      * which suppresses the eventual press action — that is how a spacebar drag
@@ -116,11 +126,18 @@ fun KeyboardKeyView(
     onLongPress: (() -> Unit)? = null,
     contentDescription: String? = null,
     icon: ImageVector? = null,
-    fontScale: Float = 1f
+    fontScale: Float = 1f,
+    /**
+     * A superscript hint rendered at the key's top-end corner, e.g. the digit
+     * a long press on a top-row key produces. Purely presentational; the
+     * caller wires the matching long-press behaviour.
+     */
+    hint: String? = null
 ) {
     // Read outside the pointer lambda so the handler closure does not capture
     // the Composition scope.
     val currentOnPress by rememberUpdatedState(onPress)
+    val currentPressOnDown by rememberUpdatedState(pressOnDown)
     val currentOnDrag by rememberUpdatedState(onDrag)
     val currentOnDragEnd by rememberUpdatedState(onDragEnd)
     val currentOnLongPress by rememberUpdatedState(onLongPress)
@@ -148,9 +165,10 @@ fun KeyboardKeyView(
                 val down = awaitFirstDown(requireUnconsumed = false)
                 pressed = true
 
-                // Fire immediately on press. This is the line that makes typing
-                // feel instant.
-                currentOnPress()
+                // Fire immediately on press — unless this key defers to
+                // release because it carries a long-press alternate. This is
+                // the line that makes typing feel instant.
+                if (currentPressOnDown) currentOnPress()
 
                 // Track the gesture for drag-aware keys.
                 var totalDx = 0f
@@ -183,8 +201,10 @@ fun KeyboardKeyView(
                         waitForUpOrCancellation()
                     }
                     if (up != null) {
-                        // Released inside the timeout: nothing more to do; the
-                        // press already fired. Cancellation also lands here.
+                        // Released inside the timeout: an ordinary tap. Keys
+                        // that deferred their press fire it now; the rest
+                        // already fired on down. Cancellation also lands here.
+                        if (!currentPressOnDown) currentOnPress()
                     } else {
                         currentOnLongPress?.invoke()
                         waitForUpOrCancellation()
@@ -219,22 +239,32 @@ fun KeyboardKeyView(
                 textAlign = TextAlign.Center
             )
         }
+        if (hint != null) {
+            Text(
+                text = hint,
+                style = KeyboardTypography.ModifierKey.copy(fontSize = 10.sp),
+                color = contentColor.copy(alpha = 0.55f),
+                maxLines = 1,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 3.dp, end = 5.dp)
+            )
+        }
     }
 }
 
 /**
  * The canonical key corner radius.
  *
- * 8 dp rather than Material 3's default 12 dp `medium` shape. A keyboard key is
- * a small target — a 12 dp radius on a 40 dp-tall key is a third of its height,
- * which makes the key look like a pill and wastes the corners that a thumb
- * actually lands on. The Material 3 Expressive guidance for dense control
- * surfaces is exactly this: reduce the radius as the control shrinks.
+ * 6 dp, flatter than Material 3's default 12 dp `medium` shape and close to
+ * the platform keyboards' key geometry. A keyboard key is a small target — a
+ * 12 dp radius on a 46 dp-tall key makes the key look like a pill and wastes
+ * the corners that a thumb actually lands on.
  */
-val KeyShape: Shape = RoundedCornerShape(8.dp)
+val KeyShape: Shape = RoundedCornerShape(6.dp)
 
 /** Corner radius for the wider modifier keys, which read better slightly softer. */
-val WideKeyShape: Shape = RoundedCornerShape(9.dp)
+val WideKeyShape: Shape = RoundedCornerShape(7.dp)
 
 /**
  * The padding between keys.
@@ -281,6 +311,14 @@ fun KeyRow(
     modifier: Modifier = Modifier,
     leading: (@Composable RowScope.() -> Unit)? = null,
     trailing: (@Composable RowScope.() -> Unit)? = null,
+    /**
+     * Superscript hints parallel to [keys], or null for no hints. Shorter
+     * than [keys] is fine — keys past the end simply show none, which is how
+     * the twelve-key Devanagari top row keeps hints on its first ten keys.
+     */
+    hints: List<String>? = null,
+    /** Fired with the hint when a hinted key is long-pressed, if any. */
+    onLongPressHint: ((String) -> Unit)? = null,
     onKey: (KeyboardKey) -> Unit
 ) {
     Row(
@@ -291,7 +329,8 @@ fun KeyRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         leading?.invoke(this)
-        for (key in keys) {
+        for ((index, key) in keys.withIndex()) {
+            val hint = hints?.getOrNull(index)
             KeyboardKeyView(
                 label = KeyboardLayouts.glyphFor(key, shift),
                 modifier = Modifier
@@ -303,6 +342,13 @@ fun KeyRow(
                     KeyboardTypography.LatinKey
                 },
                 showBorder = showBorder,
+                hint = hint,
+                pressOnDown = hint == null,
+                onLongPress = if (hint != null && onLongPressHint != null) {
+                    { onLongPressHint.invoke(hint) }
+                } else {
+                    null
+                },
                 onPress = { onKey(key) }
             )
         }

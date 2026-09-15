@@ -393,7 +393,7 @@ ALLOW |= set(
     joinToString jsonArrayOf jsonObjectOf jsonPrimitive
     launch lazy lenientEquals lineHeight listIterator listOf listOfNotNull
     localeFromLanguageTag log logError logInfo logWarn longArrayOf loopRender
-    lowerBound mapIndexed mapNotNull mapValues mapKeys matchedPair maxOfCubic
+    lowerBound mapIndexed mapNotNull mapOf mapValues mapKeys matchedPair maxOfCubic
     measureDeep mdpiToDp measureText mergedBounds minOf mkdirs
     mutableListOf mutableMapOf mutableSetOf mutableStateListOf mutableStateOf
     namedOf nextFloat nextInt nextLong nodeCount notify noOp
@@ -443,9 +443,10 @@ ALLOW |= set(
     """
     currentOnPress currentOnCommit currentOnPaste currentOnDrag currentOnDragEnd
     currentOnLongPress currentOnClick currentOnAction content currentCategory
-    onPin onClose onAction onPaste onEmojiSelected onQueryChanged onCategorySelected
+    onPin onClose onCollapse onAction onPaste onEmojiSelected onQueryChanged onCategorySelected
     accent onFinish
     items item index count glyph label text mode key row gaps modifier
+    align currentOnToggle currentPressOnDown hint pressOnDown onLongPressHint
     background pressedBackground contentColor style fontScale contentColor
     weight showBorder icon onPress fillMaxWidth fillMaxHeight height padding width
     darkColorScheme lightColorScheme dynamicDarkColorScheme dynamicLightColorScheme
