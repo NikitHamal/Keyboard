@@ -11,7 +11,8 @@ arbitrary until you know the constraint that forced them.
 
 A production-grade Android IME (input method editor) for Nepali, written in
 Kotlin with a Jetpack Compose UI. It ships three input modes, a fully offline
-lexicon, and no network permission of any kind.
+lexicon, in-app auto-update from GitHub Releases, and zero network access for
+the keyboard service itself.
 
 | Fact | Value |
 |---|---|
@@ -26,7 +27,7 @@ lexicon, and no network permission of any kind.
 | Java toolchain | JVM 17 bytecode; CI runs JDK 21 |
 | Compose | BOM `2024.12.01`, Material 3 |
 | Build files | Gradle Kotlin DSL + Version Catalog |
-| Source files | 30 Kotlin files, ~15.5 k lines |
+| Source files | 35 Kotlin files, ~17 k lines |
 
 **There is exactly one build artifact:** a single universal release APK. No
 flavours, no ABI splits, no bundles. See § 9.

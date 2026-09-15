@@ -433,6 +433,8 @@ ALLOW |= set(
     setParentCompositionContext disposeComposition close
     focusRequester show requestFocus createLifecycleAwareWindowRecomposer
     AndroidUiDispatcher
+    buffered openConnection setRequestProperty versionName
+    onDownload onProgress
     """.split()
 )
 

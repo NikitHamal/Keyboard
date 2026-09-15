@@ -160,4 +160,16 @@
     <string name="cd_cursor_left">कर्सर बायाँ सार्नुहोस्</string>
     <string name="cd_cursor_right">कर्सर दायाँ सार्नुहोस्</string>
 
+    <!-- Auto-update -->
+    <string name="update_checking">अपडेट जाँच गर्दै…</string>
+    <string name="update_available">अपडेट उपलब्ध: v%1$s</string>
+    <string name="update_download">अपडेट डाउनलोड गर्नुहोस्</string>
+    <string name="update_downloading">अपडेट डाउनलोड गर्दै… %1$d%%</string>
+    <string name="update_install">अपडेट इन्स्टल गर्नुहोस्</string>
+    <string name="update_installing">इन्स्टल गर्दै…</string>
+    <string name="update_up_to_date">तपाईं नवीनतम संस्करणमा हुनुहुन्छ</string>
+    <string name="update_error">अपडेट असफल: %1$s</string>
+    <string name="update_check_again">फेरि जाँच गर्नुहोस्</string>
+    <string name="update_dismiss">हटाउनुहोस्</string>
+
 </resources>

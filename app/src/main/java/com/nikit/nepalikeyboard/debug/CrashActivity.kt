@@ -97,7 +97,9 @@ class CrashActivity : ComponentActivity() {
             // Deliberately theme-independent of user preferences: a crash screen
             // that fails to render because a preference could not be read would
             // be an unusually cruel bug.
-            NepaliKeyboardTheme {
+            // `dynamicColor = false` so the crimson palette shows instead of
+            // the wallpaper-derived Material You blue on Android 12+.
+            NepaliKeyboardTheme(dynamicColor = false) {
                 CrashScreen(
                     report = report,
                     historyCount = all.size,

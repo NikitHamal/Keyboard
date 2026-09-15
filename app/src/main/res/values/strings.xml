@@ -131,8 +131,9 @@
     <string name="settings_clipboard_limit">History size</string>
 
     <string name="settings_privacy_title">Privacy</string>
-    <string name="settings_privacy_body">This keyboard declares no network permission at all. The Android platform itself prevents the app from opening a socket, so nothing you type can be transmitted — not keystrokes, not clipboard entries, not learned words. Every dictionary and transliteration rule is bundled inside the APK and evaluated on your device.</string>
-    <string name="settings_privacy_bullet_offline">Zero internet access — enforced by the manifest, verified by the absence of android.permission.INTERNET</string>
+    <string name="settings_privacy_body">This keyboard declares no network permission for typing. The Android platform itself prevents the IME service from opening a socket, so nothing you type can be transmitted — not keystrokes, not clipboard entries, not learned words. Every dictionary and transliteration rule is bundled inside the APK and evaluated on your device.</string>
+    <string name="settings_privacy_bullet_offline">Zero internet access for the keyboard service — the IME never opens a socket</string>
+    <string name="settings_privacy_bullet_update">INTERNET is used only by the settings activity to check for app updates from GitHub Releases</string>
     <string name="settings_privacy_bullet_notelemetry">No analytics, no crash upload, no advertising identifier</string>
     <string name="settings_privacy_bullet_password">Password fields bypass every learned model and disable suggestions</string>
     <string name="settings_privacy_bullet_clipboard">Clipboard history never leaves the device and can be cleared instantly</string>
@@ -141,6 +142,18 @@
     <string name="settings_about_version">Version %1$s</string>
     <string name="settings_about_licenses">Bundled fonts: Poppins and Noto Sans Devanagari, both licensed under the SIL Open Font License 1.1.</string>
     <string name="settings_export_lexicon">Dictionary statistics</string>
+
+    <!-- ==================== Auto-update ==================== -->
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_available">Update available: v%1$s</string>
+    <string name="update_download">Download update</string>
+    <string name="update_downloading">Downloading update… %1$d%%</string>
+    <string name="update_install">Install update</string>
+    <string name="update_installing">Installing…</string>
+    <string name="update_up_to_date">You\'re up to date</string>
+    <string name="update_error">Update failed: %1$s</string>
+    <string name="update_check_again">Check again</string>
+    <string name="update_dismiss">Dismiss</string>
 
     <!-- ==================== Onboarding ==================== -->
     <string name="onboarding_title">Set up Nepali Keyboard</string>
