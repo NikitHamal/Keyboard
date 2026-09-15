@@ -62,7 +62,7 @@ fun KeyButton(
                 indication = null
             ) {
                 if (hapticEnabled) {
-                    view.performHapticFeedback(HapticFeedbackConstants.KEYPRESS)
+                    view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
                 }
                 onClick(keySpec.value)
             },

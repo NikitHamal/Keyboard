@@ -180,7 +180,7 @@ class ImeInputController {
                 val newSelection = targetOffset.coerceAtLeast(0)
                 ic.setSelection(newSelection, newSelection)
             } else {
-                val fullText = beforeText + afterText
+                val fullText = beforeText.toString() + afterText.toString()
                 var targetOffset = currentOffset
                 for (i in 0 until delta) {
                     targetOffset = GraphemeUtils.getNextGraphemeOffset(fullText, targetOffset)
