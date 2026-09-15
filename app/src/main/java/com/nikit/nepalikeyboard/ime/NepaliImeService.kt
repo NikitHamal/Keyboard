@@ -522,7 +522,7 @@ class NepaliImeService : InputMethodService() {
         viewModel?.onServiceDestroying()
         uninstallClipboardCapture()
         try {
-            inputView?.disposeComposition()
+            (inputView as? ComposeView)?.disposeComposition()
         } catch (t: Throwable) {
             Log.w(TAG, "Could not dispose input composition", t)
         }
