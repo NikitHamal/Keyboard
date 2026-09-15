@@ -369,6 +369,11 @@ private fun ToolbarToggle(
     val currentOnToggle by rememberUpdatedState(onToggle)
     var pressed by remember { mutableStateOf(false) }
     val colors = KeyboardTheme.colors
+    // Resolved outside `semantics {}`: that block is not a composable
+    // context, so `stringResource` cannot be called inside it.
+    val toggleDescription = stringResource(
+        if (expanded) R.string.cd_toolbar_collapse else R.string.cd_toolbar_expand
+    )
 
     Box(
         modifier = Modifier
@@ -376,11 +381,7 @@ private fun ToolbarToggle(
             .fillMaxHeight()
             .clip(RoundedCornerShape(8.dp))
             .background(if (pressed) colors.keyBackgroundPressed else Color.Transparent)
-            .semantics {
-                contentDescription = stringResource(
-                    if (expanded) R.string.cd_toolbar_collapse else R.string.cd_toolbar_expand
-                )
-            }
+            .semantics { contentDescription = toggleDescription }
             .pointerInput(Unit) {
                 awaitEachGesture {
                     awaitFirstDown(requireUnconsumed = false)
