@@ -144,8 +144,8 @@ class NepaliImeService : InputMethodService() {
      *
      * Retained so the window-root tagging (see `installDecorOwners`) can reach
      * the root view without touching the service window APIs, which are not
-     * part of the public SDK. Cleared in `onDestroyInputView` and `onDestroy`
-     * so a dead view is never referenced.
+     * part of the public SDK. Cleared in `onDestroy` so a dead view is never
+     * referenced; rotation recreates the service (and the view) wholesale.
      */
     private var inputView: View? = null
 
@@ -308,20 +308,6 @@ class NepaliImeService : InputMethodService() {
         inputView = view
         installDecorOwners()
         return view
-    }
-
-    /**
-     * Called when the input view is being torn down (rotation, theme change).
-     *
-     * Clears the root tags installed by `installDecorOwners` so a recycled
-     * window never resolves to this service instance's owner, then drops the
-     * reference so the dead view can be collected. The next
-     * `onCreateInputView` re-installs everything on the fresh view.
-     */
-    override fun onDestroyInputView() {
-        clearDecorOwners()
-        inputView = null
-        super.onDestroyInputView()
     }
 
     /**
