@@ -589,6 +589,19 @@
     <string name="about__version_copied__error" comment="Title of the error toast for copying the version string">Something went wrong: {error_message}</string>
     <string name="about__changelog__title" comment="Preference title">Changelog</string>
     <string name="about__changelog__summary" comment="Preference summary">What\'s new</string>
+    <string name="about__app_updates__title" comment="Preference title">App updates</string>
+    <string name="about__app_updates__summary" comment="Preference summary">Check for and install new versions</string>
+    <string name="update__check_now" comment="Button label">Check for updates</string>
+    <string name="update__checking" comment="Update status text">Checking for updates…</string>
+    <string name="update__available" comment="Update status text">Update available: v{version}</string>
+    <string name="update__download" comment="Button label">Download update</string>
+    <string name="update__downloading" comment="Update status text">Downloading update… {progress}%</string>
+    <string name="update__install" comment="Button label">Install update</string>
+    <string name="update__installing" comment="Update status text">Installing…</string>
+    <string name="update__up_to_date" comment="Update status text">You\'re up to date</string>
+    <string name="update__error" comment="Update status text">Update failed: {message}</string>
+    <string name="update__check_again" comment="Button label">Check again</string>
+    <string name="update__dismiss" comment="Button label">Dismiss</string>
     <string name="about__repository__title" comment="Preference title">Repository (GitHub)</string>
     <string name="about__repository__summary" comment="Preference summary">Source code, discussions, issues and info</string>
     <string name="about__privacy_policy__title" comment="Preference title">Privacy policy</string>

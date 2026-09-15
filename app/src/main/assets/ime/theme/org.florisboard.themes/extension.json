@@ -16,6 +16,18 @@
       "isNight": false
     },
     {
+      "id": "nepali_crimson_day",
+      "label": "Nepali Crimson",
+      "authors": [ "NikitHamal" ],
+      "isNight": false
+    },
+    {
+      "id": "nepali_crimson_night",
+      "label": "Nepali Crimson Night",
+      "authors": [ "NikitHamal" ],
+      "isNight": true
+    },
+    {
       "id": "floris_day_borderless",
       "label": "Floris Day (Borderless)",
       "authors": [ "patrickgold" ],

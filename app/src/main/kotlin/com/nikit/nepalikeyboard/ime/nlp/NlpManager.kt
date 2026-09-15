@@ -30,6 +30,7 @@ import com.nikit.nepalikeyboard.ime.editor.EditorRange
 import com.nikit.nepalikeyboard.ime.media.emoji.EmojiSuggestionProvider
 import com.nikit.nepalikeyboard.ime.nlp.han.HanShapeBasedLanguageProvider
 import com.nikit.nepalikeyboard.ime.nlp.latin.LatinLanguageProvider
+import com.nikit.nepalikeyboard.ime.nlp.nepali.NepaliLexiconProvider
 import com.nikit.nepalikeyboard.keyboardManager
 import com.nikit.nepalikeyboard.lib.util.NetworkUtils
 import com.nikit.nepalikeyboard.subtypeManager
@@ -66,6 +67,7 @@ class NlpManager(context: Context) {
         mapOf(
             LatinLanguageProvider.ProviderId to ProviderInstanceWrapper(LatinLanguageProvider(context)),
             HanShapeBasedLanguageProvider.ProviderId to ProviderInstanceWrapper(HanShapeBasedLanguageProvider(context)),
+            NepaliLexiconProvider.ProviderId to ProviderInstanceWrapper(NepaliLexiconProvider(context)),
         )
     }
     // lock unnecessary because values constant

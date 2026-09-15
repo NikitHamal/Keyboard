@@ -51,6 +51,7 @@ import com.nikit.nepalikeyboard.app.ext.ExtensionListScreenType
 import com.nikit.nepalikeyboard.app.ext.ExtensionViewScreen
 import com.nikit.nepalikeyboard.app.settings.HomeScreen
 import com.nikit.nepalikeyboard.app.settings.about.AboutScreen
+import com.nikit.nepalikeyboard.app.settings.about.AppUpdatesScreen
 import com.nikit.nepalikeyboard.app.settings.about.ProjectLicenseScreen
 import com.nikit.nepalikeyboard.app.settings.about.ThirdPartyLicensesScreen
 import com.nikit.nepalikeyboard.app.settings.advanced.BackupScreen
@@ -193,6 +194,10 @@ object Routes {
         object About
 
         @Serializable
+        @Deeplink("settings/about/app-updates")
+        object AppUpdates
+
+        @Serializable
         @Deeplink("settings/about/project-license")
         object ProjectLicense
 
@@ -320,6 +325,7 @@ object Routes {
             composableWithDeepLink(Settings.Restore::class) { RestoreScreen() }
 
             composableWithDeepLink(Settings.About::class) { AboutScreen() }
+            composableWithDeepLink(Settings.AppUpdates::class) { AppUpdatesScreen() }
             composableWithDeepLink(Settings.ProjectLicense::class) { ProjectLicenseScreen() }
             composableWithDeepLink(Settings.ThirdPartyLicenses::class) { ThirdPartyLicensesScreen() }
 

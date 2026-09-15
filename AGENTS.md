@@ -137,12 +137,33 @@ nothing (it currently returns nothing).
    versioned artifact name, verification, and a separate `release` job
    publishing full releases from `main` and prereleases from other branches.
 
-Not yet ported (planned slices): Nepali subtypes/layouts, the Romanized→
-Devanagari transliteration engine, the offline Nepali lexicon, the in-app
-auto-updater, and the crimson keyboard theme. The previous engine
-(`translit/`, `lexicon/`, `unicode/`) lives in git history on
-`feat/nepali-ime-complete` and will be reintegrated against FlorisBoard's
-composer and layout/subtype system — not by reviving the old IME service.
+Shipped on top of upstream (this branch):
+
+* **Nepali subtypes** (`ne-NP`, asset-only in
+  `org.florisboard.localization/extension.json` — see note below):
+  Devanagari-native (`nepali_devanagari` characters layout, traditional
+  InScript-derived 12/11/8 arrangement generated from our old tables) and
+  Romanized (`qwerty` + transliteration composer + lexicon suggestions).
+* **Transliteration** (`ime/text/composing/NepaliRomanized.kt`, a `Composer`
+  like Telex/Hangul): stateless whole-word recompute per keystroke via the
+  ported engine (`nepali/translit/`, `nepali/unicode/`); word-final schwa
+  resolved at commit time in `EditorInstance.commitText`.
+* **Lexicon** (`ime/nlp/nepali/NepaliLexiconProvider.kt`, registered in
+  `NlpManager`): offline `ne_lexicon.json` trie + learned words, shown as
+  candidates with the Romanized gloss; nothing auto-commits.
+* **Crimson theme** (`nepali_crimson_day/night` stylesheets, default via
+  `AppPrefs` theme ids).
+* **Auto-updater** (`update/`, `Settings.AppUpdates` route, About row):
+  checks `releases/latest`, downloads, installs via `PackageInstaller`.
+  INTERNET exists solely for this; the IME service never opens a socket.
+
+NOTE: the subtype preset above intentionally references the upstream
+extension id `org.florisboard.*` for shared resources (layouts, composers,
+localization, currencysets). Those ids are stable registry keys, not
+branding — do not "fix" them to our package.
+
+The previous hand-written engine is superseded; `feat/nepali-ime-complete`
+remains history-only.
 
 ---
 

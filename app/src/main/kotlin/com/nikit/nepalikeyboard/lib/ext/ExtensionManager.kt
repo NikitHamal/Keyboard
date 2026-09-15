@@ -26,6 +26,7 @@ import com.nikit.nepalikeyboard.ime.text.composing.Appender
 import com.nikit.nepalikeyboard.ime.text.composing.Composer
 import com.nikit.nepalikeyboard.ime.text.composing.HangulUnicode
 import com.nikit.nepalikeyboard.ime.text.composing.KanaUnicode
+import com.nikit.nepalikeyboard.ime.text.composing.NepaliRomanized
 import com.nikit.nepalikeyboard.ime.text.composing.WithRules
 import com.nikit.nepalikeyboard.ime.theme.ThemeExtension
 import com.nikit.nepalikeyboard.lib.devtools.LogTopic
@@ -76,6 +77,7 @@ val ExtensionJsonConfig = Json {
             subclass(Appender::class, Appender.serializer())
             subclass(HangulUnicode::class, HangulUnicode.serializer())
             subclass(KanaUnicode::class, KanaUnicode.serializer())
+            subclass(NepaliRomanized::class, NepaliRomanized.serializer())
             subclass(WithRules::class, WithRules.serializer())
             defaultDeserializer { Appender.serializer() }
         }

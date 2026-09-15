@@ -36,6 +36,7 @@ import com.nikit.nepalikeyboard.ime.keyboard.KeyboardMode
 import com.nikit.nepalikeyboard.ime.nlp.SuggestionCandidate
 import com.nikit.nepalikeyboard.ime.text.composing.Appender
 import com.nikit.nepalikeyboard.ime.text.composing.Composer
+import com.nikit.nepalikeyboard.ime.text.composing.NepaliRomanized
 import com.nikit.nepalikeyboard.ime.text.key.KeyVariation
 import com.nikit.nepalikeyboard.keyboardManager
 import com.nikit.nepalikeyboard.lib.ext.ExtensionComponentName
@@ -228,6 +229,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     override fun commitText(text: String): Boolean {
+        finalizeNepaliComposingWord()
         val isPhantomSpaceActive = phantomSpace.determine(text)
         autoSpace.setInactive()
         phantomSpace.setInactive()
@@ -235,6 +237,30 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             super.commitText("$SPACE$text")
         } else {
             super.commitText(text)
+        }
+    }
+
+    /**
+     * Resolves the pending final schwa of a Nepali (Romanized) word before it
+     * is committed.
+     *
+     * While typing, [NepaliRomanized] renders the mid-word form (trailing
+     * inherent vowel kept); a finished word additionally resolves
+     * [TransliterationRules.SCHWA_RETENTION_WORDS]. This replaces the live
+     * composing text with the finished form through the normal finalize
+     * funnel, so the subsequent commit inserts the correct spelling.
+     *
+     * Strictly gated on the Nepali-Romanized composer and a live composing
+     * region: every other subtype and every plain insertion takes the exact
+     * same path as before.
+     */
+    private fun finalizeNepaliComposingWord() {
+        if (determineComposer(subtypeManager.activeSubtype.composer).id != NepaliRomanized.id) return
+        val composing = activeContent.composing
+        if (!composing.isValid) return
+        val corrected = NepaliRomanized.finalizeWord(activeContent.composingText)
+        if (corrected != activeContent.composingText) {
+            super.finalizeComposingText(corrected)
         }
     }
 

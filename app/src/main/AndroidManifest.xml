@@ -8,6 +8,17 @@
     <!-- Permission needed to create notifications on devices running Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
+    <!-- INTERNET is declared ONLY for the in-app auto-updater. The keyboard
+         service itself never opens a socket: all transliteration, lexicon
+         lookup, and clipboard capture run entirely on-device. The network
+         permission is used exclusively by UpdateManager in the settings app
+         to check GitHub Releases for newer APK versions and to download them.
+         See settings -> About -> App updates for the full contract. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- Required to prompt the user to install a downloaded update APK. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+
     <!-- Android 11+ only: Define that FlorisBoard requests to see all apps that
           ship with an IME or Spell Check service. This is used to guide the user
           in the Settings Ui why FlorisBoard may not be working.
@@ -129,6 +140,17 @@
                 <data android:mimeType="image/*"/>
             </intent-filter>
         </activity>
+
+        <!-- Transparent activity that receives the PackageInstaller callback
+             for in-app updates. No UI of its own; finishes immediately after
+             observing the install result. Not exported: only launched by our
+             own PendingIntent. -->
+        <activity
+            android:name="com.nikit.nepalikeyboard.update.InstallActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true"/>
 
         <!-- Clipboard Media File Provider -->
         <provider
