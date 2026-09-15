@@ -18,7 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Recomposer
 import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
-import androidx.compose.ui.platform.AndroidUiDispatcher
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.createLifecycleAwareWindowRecomposer
 import androidx.lifecycle.setViewTreeLifecycleOwner
@@ -31,7 +30,6 @@ import com.nikit.nepalikeyboard.settings.SettingsActivity
 import com.nikit.nepalikeyboard.ui.KeyboardHost
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -163,9 +161,6 @@ class NepaliImeService : InputMethodService() {
      * composition context the framework never consults the window hierarchy.
      */
     private var imeRecomposer: Recomposer? = null
-
-    /** The job running `Recomposer.runRecomposeAndApplyChanges`, if any. */
-    private var recomposerJob: Job? = null
 
     /**
      * The haptic service, resolved once. On API 31+ this must come from
@@ -317,15 +312,11 @@ class NepaliImeService : InputMethodService() {
             val recomposer = createLifecycleAwareWindowRecomposer()
             imeRecomposer = recomposer
             setParentCompositionContext(recomposer)
-            // Launch on AndroidUiDispatcher.Main, which is the Choreographer-backed
-            // dispatcher that provides a MonotonicFrameClock. The service scope's
-            // Dispatchers.Main.immediate does NOT provide one, and
-            // runRecomposeAndApplyChanges requires it in the calling coroutine's
-            // context — launching without it crashes with "A MonotonicFrameClock
-            // is not available in this CoroutineContext".
-            recomposerJob = scope.launch(AndroidUiDispatcher.Main) {
-                recomposer.runRecomposeAndApplyChanges()
-            }
+            // Do NOT call runRecomposeAndApplyChanges manually here:
+            // createLifecycleAwareWindowRecomposer already launches it internally
+            // on its own coroutine with a proper MonotonicFrameClock. A second
+            // launch on the same Recomposer throws "Recomposer already running".
+            // Tear-down is handled by imeRecomposer.close() in tearDownComposition.
 
             setContent {
                 InstallKeyboardViewTreeOwners(owner) {
@@ -554,7 +545,7 @@ class NepaliImeService : InputMethodService() {
      * composition or leave two recomposers running) and from `onDestroy`.
      * Every step is guarded and the fields are nulled even on failure, so a
      * half-torn-down composition can never be re-entered. First-run no-ops:
-     * all three fields start null.
+     * both fields start null.
      */
     private fun tearDownComposition() {
         try {
@@ -569,8 +560,6 @@ class NepaliImeService : InputMethodService() {
             Log.w(TAG, "Could not close recomposer", t)
         }
         imeRecomposer = null
-        recomposerJob?.cancel()
-        recomposerJob = null
     }
 
     // =========================================================================

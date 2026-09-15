@@ -22,6 +22,18 @@
          capability beyond letting the system launch our own config UI. -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- INTERNET is declared ONLY for the in-app auto-updater. The keyboard
+         service itself never opens a socket: all transliteration, lexicon
+         lookup, and clipboard capture run entirely on-device. The network
+         permission is used exclusively by UpdateManager in the settings
+         activity to check GitHub Releases for newer APK versions and to
+         download them. See settings -> Privacy for the full contract. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Required by PackageInstaller to prompt the user to install the
+         downloaded APK on API 26+. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <application
         android:name=".NepaliKeyboardApp"
         android:allowBackup="false"
@@ -180,6 +192,24 @@
             android:exported="false"
             android:enabled="true"
             android:initOrder="100" />
+
+        <!-- ===================== INSTALL CALLBACK ======================== -->
+        <!--
+          Transparent activity that receives the PackageInstaller callback
+          when the user confirms or cancels the system install prompt for an
+          in-app update. No UI of its own — it finishes immediately after
+          observing the result.
+
+          Not exported: it is only launched by our own PendingIntent.
+          excludeFromRecents + noHistory so it never appears in the task
+          switcher or survives a navigation away.
+        -->
+        <activity
+            android:name=".update.InstallActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true" />
     </application>
 
 </manifest>

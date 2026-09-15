@@ -34,6 +34,9 @@ import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
@@ -71,6 +74,7 @@ import com.nikit.nepalikeyboard.ime.InputMode
 import com.nikit.nepalikeyboard.ime.OneHandedSide
 import com.nikit.nepalikeyboard.lexicon.LexiconRepository
 import com.nikit.nepalikeyboard.ui.theme.NepaliKeyboardTheme
+import com.nikit.nepalikeyboard.update.UpdateManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -195,10 +199,23 @@ class SettingsActivity : ComponentActivity() {
                 imeState.value = readImeStatus()
             }
 
+            // Auto-update: check for new versions on first composition and
+            // observe the state for the banner.
+            val updateManager = remember { UpdateManager.get(this) }
+            val updateState by updateManager.state.collectAsStateWithLifecycle()
+            LaunchedEffect(Unit) {
+                updateManager.checkForUpdate()
+            }
+
             NepaliKeyboardTheme(themeMode = prefs.themeMode, dynamicColor = prefs.dynamicColor) {
                 SettingsScreen(
                     prefs = prefs,
                     imeStatus = status,
+                    updateState = updateState,
+                    onCheckUpdate = { updateManager.reset(); lifecycleScope.launch { updateManager.checkForUpdate() } },
+                    onDownloadUpdate = { url -> lifecycleScope.launch { updateManager.downloadApk(url) } },
+                    onInstallUpdate = { updateManager.installApk(this@SettingsActivity) },
+                    onDismissUpdate = { updateManager.reset() },
                     onPreferenceChange = { change -> change(repository) },
                     onOpenImeSettings = { openImeSettings() },
                     onOpenImePicker = { openImePicker() },
@@ -402,6 +419,11 @@ data class ImeStatus(
 private fun SettingsScreen(
     prefs: KeyboardPreferences,
     imeStatus: ImeStatus,
+    updateState: UpdateManager.State,
+    onCheckUpdate: () -> Unit,
+    onDownloadUpdate: (String) -> Unit,
+    onInstallUpdate: () -> Unit,
+    onDismissUpdate: () -> Unit,
     onPreferenceChange: ((SettingsRepository) -> Unit) -> Unit,
     onOpenImeSettings: () -> Unit,
     onOpenImePicker: () -> Unit,
@@ -425,6 +447,21 @@ private fun SettingsScreen(
                 bottom = insets.calculateBottomPadding() + 24.dp
             )
         ) {
+            // Update banner — shown only when there's actionable state.
+            if (updateState !is UpdateManager.State.Idle &&
+                updateState !is UpdateManager.State.UpToDate
+            ) {
+                item {
+                    UpdateBanner(
+                        state = updateState,
+                        onCheck = onCheckUpdate,
+                        onDownload = onDownloadUpdate,
+                        onInstall = onInstallUpdate,
+                        onDismiss = onDismissUpdate
+                    )
+                }
+            }
+
             item {
                 SetupSection(
                     status = imeStatus,
@@ -630,6 +667,107 @@ private fun SettingsScreen(
             item {
                 SectionHeader(stringResource(R.string.settings_section_about))
                 AboutSection(context = context)
+            }
+        }
+    }
+}
+
+/**
+ * Update banner shown at the top of the settings screen when the auto-updater
+ * has actionable state: a new version available, a download in progress, or a
+ * downloaded APK ready to install.
+ *
+ * Not shown for [UpdateManager.State.Idle] or [UpdateManager.State.UpToDate] —
+ * those are silent states that don't need UI real estate.
+ */
+@Composable
+private fun UpdateBanner(
+    state: UpdateManager.State,
+    onCheck: () -> Unit,
+    onDownload: (String) -> Unit,
+    onInstall: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.primaryContainer,
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            when (state) {
+                is UpdateManager.State.Checking -> {
+                    Text(
+                        text = stringResource(R.string.update_checking),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                is UpdateManager.State.UpdateAvailable -> {
+                    Text(
+                        text = stringResource(R.string.update_available, state.version),
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(onClick = { onDownload(state.downloadUrl) }) {
+                            Text(stringResource(R.string.update_download))
+                        }
+                        OutlinedButton(onClick = onDismiss) {
+                            Text(stringResource(R.string.update_dismiss))
+                        }
+                    }
+                }
+                is UpdateManager.State.Downloading -> {
+                    Text(
+                        text = stringResource(R.string.update_downloading, state.progress),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    LinearProgressIndicator(
+                        progress = { state.progress / 100f },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+                is UpdateManager.State.Downloaded -> {
+                    Text(
+                        text = stringResource(R.string.update_install),
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(onClick = onInstall) {
+                        Text(stringResource(R.string.update_install))
+                    }
+                }
+                is UpdateManager.State.Installing -> {
+                    Text(
+                        text = stringResource(R.string.update_installing),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                is UpdateManager.State.Error -> {
+                    Text(
+                        text = stringResource(R.string.update_error, state.message),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedButton(onClick = onCheck) {
+                        Text(stringResource(R.string.update_check_again))
+                    }
+                }
+                else -> { /* Idle and UpToDate are not shown */ }
             }
         }
     }

@@ -12,9 +12,12 @@
 # catches a real class of error.
 #
 # It runs on:
-#   * every push to main            — the authoritative artifact
+#   * every push to any branch (when app/ or workflow files change)
 #   * every pull request            — the gate
 #   * workflow_dispatch             — for an on-demand build from any branch
+#
+# On success from main or a version tag, the APK is also published as a
+# GitHub Release so the in-app updater can discover it.
 #
 # The job produces exactly ONE release APK, signed with the checked-in demo key.
 # See the "Release signing" section of AGENTS.md for why that is safe and what
@@ -25,16 +28,31 @@ name: Build release APK
 
 on:
   push:
-    branches: [main]
+    paths:
+      - 'app/**'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - '.github/workflows/build-release.yml'
+      - 'tools/**'
   pull_request:
-    branches: [main]
+    paths:
+      - 'app/**'
+      - 'gradle/**'
+      - 'gradlew'
+      - 'gradlew.bat'
+      - 'build.gradle.kts'
+      - 'settings.gradle.kts'
+      - 'gradle.properties'
+      - '.github/workflows/build-release.yml'
+      - 'tools/**'
   workflow_dispatch:
 
-# Least privilege. This job reads the repository and uploads an artifact; it
-# never writes to the repo, never comments, and never needs a token with more
-# reach than that. Setting it here rather than per-step means the default for
-# the whole workflow is the restrictive one, which is what you want when a new
-# step is added by someone who has not read this header.
+# Least privilege for build steps. The release step below needs `contents: write`
+# to create a GitHub Release; that is granted only on the release job.
 permissions:
   contents: read
 
@@ -54,10 +72,6 @@ jobs:
     steps:
       # -----------------------------------------------------------------------
       # Checkout
-      #
-      # Full history is not needed. `fetch-depth: 1` keeps the clone fast, and
-      # the short SHA used in the artifact name comes from `github.sha` rather
-      # than from `git rev-parse`, so a shallow clone is sufficient.
       # -----------------------------------------------------------------------
       - name: Check out repository
         uses: actions/checkout@v4
@@ -66,21 +80,6 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Source hygiene gates
-      #
-      # These run BEFORE the JDK and Gradle setup on purpose. They are pure
-      # Python, take under a second, and they can catch the two classes of error
-      # that would otherwise only surface as a confusing compiler message thirty
-      # seconds into the Gradle run:
-      #
-      #   * kotlin_lint.py    — unbalanced delimiters, package/directory
-      #                         mismatches, and leftover scaffold markers
-      #   * kotlin_refcheck.py — names referenced but never declared, and
-      #                         imports that resolve to nothing
-      #
-      # Failing fast here means a typo costs ten seconds rather than a full
-      # dependency download. Both scripts are part of the repository and are
-      # themselves reviewed; they are not a substitute for the compiler, and the
-      # Gradle step below still runs unconditionally when they pass.
       # -----------------------------------------------------------------------
       - name: Set up Python for source checks
         uses: actions/setup-python@v5
@@ -95,16 +94,6 @@ jobs:
 
       # -----------------------------------------------------------------------
       # JDK 21
-      #
-      # 21 rather than 17, even though the project compiles to JVM 17 bytecode.
-      # AGP 8.7 requires 17 as a minimum and is fully supported on 21; the
-      # Gradle daemon on 21 is measurably faster for a minified release build,
-      # and using a single modern LTS avoids the class of failure where the
-      # toolchain that builds differs from the one CI starts.
-      #
-      # The distribution is the Temurin LTS build: it is the one the Android
-      # Gradle Plugin's own CI uses, so an AGP regression that only appears on
-      # another vendor's JDK is not something we will be first to discover.
       # -----------------------------------------------------------------------
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -114,17 +103,6 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Gradle
-      #
-      # `gradle/actions/setup-gradle` rather than a bare `gradle` invocation:
-      # it installs the wrapper validation, enables the dependency cache and the
-      # configuration cache, and writes the build scan summary that makes a
-      # failed run diagnosable from the PR page.
-      #
-      # `validate-wrappers: true` is the important part. It verifies that the
-      # `gradle-wrapper.jar` in the repository matches the published checksum
-      # for the version named in `gradle-wrapper.properties`. A tampered wrapper
-      # is one of the few supply-chain attacks that a normal build would not
-      # notice, because the wrapper is what fetches and runs everything else.
       # -----------------------------------------------------------------------
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -134,46 +112,12 @@ jobs:
 
       # -----------------------------------------------------------------------
       # Build
-      #
-      # One command, one task, one artifact.
-      #
-      # `assembleRelease` builds the single universal APK. There is no
-      # flavour matrix and no per-ABI split: the app ships no native code, so
-      # splitting would produce identical APKs with different names. Exactly one
-      # artifact is a deliberate property of this repository — it makes "the
-      # build output" an unambiguous thing to point at, and it means the
-      # artifact-verification step below can assert its existence by name.
-      #
-      # `--no-daemon` because the runner is single-use. A daemon would be
-      # started, used once, and then either killed by the runner's cleanup or
-      # left holding a JVM that the next phase has to account for. The startup
-      # cost it would save is paid once and is small next to the dependency
-      # download; what it buys is that the build's memory settings are the ones
-      # in `gradle.properties`, not whatever a stale daemon was started with.
-      #
-      # `--stacktrace` so that a ProGuard/R8 failure shows the rule that caused
-      # it rather than only the obfuscated symptom.
-      #
-      # NOTE: no `clean`. The checkout is fresh, so there is nothing stale to
-      # remove, and `clean` on a cold Gradle cache only invalidates the
-      # configuration cache for no benefit.
       # -----------------------------------------------------------------------
       - name: Assemble release APK
         run: ./gradlew assembleRelease --no-daemon --stacktrace
 
       # -----------------------------------------------------------------------
       # Rename to a versioned, traceable name
-      #
-      # The Gradle output is always `app-release.apk`. Two builds from different
-      # commits would therefore produce artifacts indistinguishable by name,
-      # which is exactly the situation a "which APK is this?" bug report is made
-      # of. The version plus the short SHA fixes that, matching the
-      # `name-v{version}-{hash}` convention used by sibling projects.
-      #
-      # `git rev-parse --short HEAD` rather than a substring of `github.sha`:
-      # the two agree in practice, but the git command is the definition of the
-      # short SHA and stays correct if the checkout depth or the GitHub payload
-      # ever changes.
       # -----------------------------------------------------------------------
       - name: Rename APK with version and short commit SHA
         id: rename
@@ -189,24 +133,7 @@ jobs:
           ls -l dist
 
       # -----------------------------------------------------------------------
-      # Verify the artifact before it is published
-      #
-      # Three assertions, each of which catches a failure mode that would
-      # otherwise be discovered by a user installing a broken APK:
-      #
-      #   1. The file exists and is non-trivially sized. An APK under 1 MB means
-      #      the assets were dropped — the lexicon is ~200 KB and the two fonts
-      #      are larger than that on their own, so a small APK is a build that
-      #      silently lost its data.
-      #   2. The APK is a valid zip. `unzip -l` on a truncated or corrupted
-      #      output fails here rather than on a phone.
-      #   3. `classes.dex` is present. A resource-only archive can still be a
-      #      valid zip; without a dex there is nothing to run.
-      #
-      # The signature is deliberately NOT verified here. `apksigner` would need
-      # the Android SDK build-tools, which is a large download for an assertion
-      # that R8 cannot pass without a signing config — a release build fails
-      # outright if `signingConfig` is missing. The check would be redundant.
+      # Verify the APK
       # -----------------------------------------------------------------------
       - name: Verify the APK
         run: |
@@ -238,22 +165,48 @@ jobs:
           echo "APK verified: valid zip, contains classes.dex"
 
       # -----------------------------------------------------------------------
-      # Publish
-      #
-      # One artifact, containing one APK, named like the file it holds:
-      # `nepali-keyboard-v{version}-{short_sha}`. `if-no-files-found: error`
-      # turns "the build produced nothing" into a failed step rather than a
-      # silent success with an empty download — which is the single most
-      # common way a CI pipeline ends up lying about what it did.
-      #
-      # `retention-days: 30` keeps the artifact store bounded. These are demo
-      # builds of a public demo key; the useful life of the artifact is the
-      # length of the PR conversation about it, not a release cycle.
+      # Upload artifact
       # -----------------------------------------------------------------------
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: nepali-keyboard-v${{ steps.rename.outputs.version }}-${{ steps.rename.outputs.short_sha }}
           path: dist/*.apk
           if-no-files-found: error
           retention-days: 30
+
+      # -----------------------------------------------------------------------
+      # Publish GitHub Release (main branch only)
+      #
+      # The in-app updater checks the GitHub Releases API for the latest
+      # version. A release is created only from main so that feature branches
+      # and PRs don't pollute the release feed with pre-release builds.
+      # -----------------------------------------------------------------------
+      - name: Create GitHub Release
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.rename.outputs.version }}-${{ steps.rename.outputs.short_sha }}
+          name: Nepali Keyboard v${{ steps.rename.outputs.version }}
+          body: |
+            ## Nepali Keyboard v${{ steps.rename.outputs.version }}
+
+            **Commit:** `${{ github.sha }}`
+            **Branch:** `${{ github.ref_name }}`
+
+            ### Installation
+            Download the APK below and install it directly. The app includes
+            an in-app updater that will check for newer releases automatically.
+
+            ### What's included
+            - Native Devanagari layout
+            - Romanized Nepali transliteration
+            - Full English QWERTY
+            - Emoji panel with search
+            - Clipboard history
+            - Offline — zero network permissions for typing
+          files: dist/*.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
