@@ -80,6 +80,19 @@
     <string name="settings_open_sandbox_desc">Practise in a local field that stores nothing.</string>
     <string name="settings_rerun_setup">Run setup walkthrough</string>
     <string name="settings_rerun_setup_desc">Step through enabling and selecting the keyboard again.</string>
+    <string name="settings_open_debug">Diagnostics</string>
+    <string name="settings_open_debug_desc">View crash reports and keyboard status.</string>
+
+    <!-- Crash / debug screen. Shown when a previous run ended in an uncaught
+         exception. Kept short: the user is here because something broke. -->
+    <string name="crash_screen_title">Keyboard stopped</string>
+    <string name="crash_screen_explanation">The keyboard stopped unexpectedly. The report below is what the app captured at the moment it failed. Copy it if you want to report the problem.</string>
+    <string name="crash_screen_restart">Restart keyboard app</string>
+    <string name="crash_screen_copy">Copy</string>
+    <string name="crash_screen_settings">Settings</string>
+    <string name="crash_screen_clear">Clear and restart</string>
+    <string name="crash_screen_history">%1$s</string>
+    <string name="crash_screen_none">No crash report found. If the app closed without a message, the crash may have happened before the handler could be installed.</string>
 
     <string name="settings_default_mode">Default input mode</string>
     <string name="settings_keyboard_height">Keyboard height</string>

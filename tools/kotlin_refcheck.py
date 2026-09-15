@@ -331,8 +331,24 @@ ALLOW |= set(
     Value VariantSet VectorPath Vibrator VibratorManager View ViewModel
     ViewModelProvider ViewModelStore ViewModelStoreOwner ViewTreeLifecycleOwner
     ViewTreeSavedStateRegistryOwner ViewTreeViewModelStoreOwner VisibleValue
+    setViewTreeLifecycleOwner setViewTreeSavedStateRegistryOwner
+    setViewTreeViewModelStoreOwner
     Width WindowInsets WindowInfo WordBreak
     XScale YScale Zoom
+    """.split()
+)
+
+# Members reached through an implicit receiver that the declaration scan cannot
+# see: java.io.File, SharedPreferences.Editor, InputStream, StringBuilder and
+# friends. Grouped by the type whose API they belong to so that a future report
+# can be triaged by asking "which receiver is this actually on?" rather than by
+# pattern-matching a name.
+ALLOW |= set(
+    """
+    exists listFiles writeText readText delete mkdirs
+    getSharedPreferences getBoolean getInt getLong getString putBoolean putInt
+    putLong putString remove commit apply
+    setPrimaryClip show halt javaClass
     """.split()
 )
 

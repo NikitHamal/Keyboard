@@ -39,17 +39,27 @@
     </style>
 
     <!--
-      The IME window theme. android:windowIsFloating=false and a transparent
-      background let our Compose root paint the keyboard surface itself, which
-      is what allows rounded corners and the floating one-handed pill.
+      The IME window theme. Applied to <service android:theme="..."> in the
+      manifest — not optional. See the comment there: an IME window is a Dialog
+      window, and if windowIsFloating is left unset the framework can host the
+      input view inside a real AlertDialog (root LinearLayout #parentPanel)
+      that carries no ViewTreeLifecycleOwner, which makes Compose throw
+      IllegalStateException the instant the input view is attached.
+
+      android:windowIsFloating=false is therefore load-bearing, not cosmetic.
+      It is what keeps the input view in the IME's own non-floating window,
+      whose decor we tag with our three view-tree owners.
     -->
     <style name="Theme.NepaliKeyboard.Ime" parent="Theme.NepaliKeyboard">
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowIsFloating">false</item>
+        <item name="android:windowIsTranslucent">false</item>
         <item name="android:windowNoTitle">true</item>
         <item name="android:windowActionBar">false</item>
         <item name="android:windowAnimationStyle">@null</item>
         <item name="android:windowSoftInputMode">adjustNothing</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">false</item>
     </style>
 
 </resources>

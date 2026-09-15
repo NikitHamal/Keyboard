@@ -17,6 +17,9 @@ import android.view.inputmethod.InputMethodManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ComposeView
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.nikit.nepalikeyboard.translit.RomanizedEngine
 import com.nikit.nepalikeyboard.clipboard.ClipboardCapture
 import com.nikit.nepalikeyboard.clipboard.ClipItem
@@ -229,6 +232,33 @@ class NepaliImeService : InputMethodService() {
             // autofill, and declaring otherwise makes some password managers
             // offer to save the keyboard's own contents.
             importantForAutofill = View.IMPORTANT_FOR_AUTOFILL_NO
+
+            // -----------------------------------------------------------------
+            // Tag the view tree owners BEFORE the composition starts.
+            //
+            // `InstallKeyboardViewTreeOwners` inside setContent is the tidy way
+            // to do this, but it is not sufficient on its own, and relying on
+            // it alone was a hard crash:
+            //
+            //   ComposeView.onAttachedToWindow()
+            //     -> resolveParentCompositionContext()
+            //       -> getWindowRecomposer()
+            //         -> createLifecycleAwareWindowRecomposer()
+            //           -> findViewTreeLifecycleOwner() ?: throw IllegalStateException
+            //
+            // That call chain runs the moment the view is attached, and it
+            // *bails out* unless a ViewTreeLifecycleOwner is already present on
+            // this view. The composable inside setContent cannot supply it,
+            // because the composition is exactly what is failing to start.
+            //
+            // Setting the tags here closes the gap. The in-composition effect
+            // still runs afterwards and is still the authority for teardown;
+            // this is belt-and-braces for the attach-time read.
+            // -----------------------------------------------------------------
+            setViewTreeLifecycleOwner(owner)
+            setViewTreeViewModelStoreOwner(owner)
+            setViewTreeSavedStateRegistryOwner(owner)
+
             setContent {
                 InstallKeyboardViewTreeOwners(owner) {
                     KeyboardRoot(
@@ -246,6 +276,8 @@ class NepaliImeService : InputMethodService() {
         // Re-apply the editor context, because a configuration change destroys
         // and recreates this view without a fresh `onStartInput`.
         currentEditorInfo?.let { vm.onEditorChanged(it, input) }
+
+        Log.d(TAG, "Input view created")
 
         return view
     }

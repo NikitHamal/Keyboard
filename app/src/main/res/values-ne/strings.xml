@@ -63,6 +63,18 @@
     <string name="settings_open_sandbox_desc">केही पनि सुरक्षित नगर्ने स्थानीय फाँटमा अभ्यास गर्नुहोस्।</string>
     <string name="settings_rerun_setup">सेटअप मार्गदर्शन फेरि चलाउनुहोस्</string>
     <string name="settings_rerun_setup_desc">किबोर्ड सक्रिय गर्ने र छान्ने चरणहरू फेरि हेर्नुहोस्।</string>
+    <string name="settings_open_debug">निदान</string>
+    <string name="settings_open_debug_desc">क्र्यास रिपोर्ट र किबोर्ड स्थिति हेर्नुहोस्।</string>
+
+    <!-- Crash / debug screen. -->
+    <string name="crash_screen_title">किबोर्ड रोकियो</string>
+    <string name="crash_screen_explanation">किबोर्ड अप्रत्याशित रूपमा रोकियो। तलको रिपोर्ट समस्या आउँदा एपले संकलन गरेको हो। समस्या जनाउन चाहनुहुन्छ भने यसलाई प्रतिलिपि गर्नुहोस्।</string>
+    <string name="crash_screen_restart">किबोर्ड एप पुनः सुरु गर्नुहोस्</string>
+    <string name="crash_screen_copy">प्रतिलिपि</string>
+    <string name="crash_screen_settings">सेटिङ</string>
+    <string name="crash_screen_clear">खाली गरी पुनः सुरु</string>
+    <string name="crash_screen_history">%1$s</string>
+    <string name="crash_screen_none">कुनै क्र्यास रिपोर्ट भेटिएन। सन्देश बिना एप बन्द भएको भए, ह्यान्डलर स्थापना हुनु अघि नै क्र्यास भएको हुन सक्छ।</string>
 
     <string name="settings_default_mode">पूर्वनिर्धारित इनपुट मोड</string>
     <string name="settings_keyboard_height">किबोर्डको उचाइ</string>

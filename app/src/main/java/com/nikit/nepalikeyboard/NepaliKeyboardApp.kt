@@ -2,6 +2,7 @@ package com.nikit.nepalikeyboard
 
 import android.app.Application
 import android.util.Log
+import com.nikit.nepalikeyboard.debug.CrashHandler
 import com.nikit.nepalikeyboard.lexicon.LexiconRepository
 import com.nikit.nepalikeyboard.settings.SettingsRepository
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -56,6 +57,15 @@ class NepaliKeyboardApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instanceRef = this
+
+        // Install the crash handler FIRST, before any other initialiser.
+        //
+        // Ordering is the whole point: anything registered or constructed before
+        // this line can throw outside our protection, and for an IME that means
+        // an invisible death — a keyboard that simply never appears. The handler
+        // itself does no disk I/O at install time, so it costs nothing here.
+        CrashHandler.install(this)
+
         preloadLexicon()
     }
 

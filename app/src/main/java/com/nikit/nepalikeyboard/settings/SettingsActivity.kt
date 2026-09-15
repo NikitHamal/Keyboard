@@ -61,6 +61,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import com.nikit.nepalikeyboard.BuildConfig
 import com.nikit.nepalikeyboard.R
+import com.nikit.nepalikeyboard.debug.CrashActivity
+import com.nikit.nepalikeyboard.debug.CrashScreenGuard
+import com.nikit.nepalikeyboard.debug.PendingCrash
 import com.nikit.nepalikeyboard.ime.InputMode
 import com.nikit.nepalikeyboard.ime.OneHandedSide
 import com.nikit.nepalikeyboard.lexicon.LexiconRepository
@@ -110,6 +113,24 @@ class SettingsActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val repository = SettingsRepository.get(this)
+
+        // Surface a crash from the previous run before anything else.
+        //
+        // This is the other half of CrashHandler: an IME that dies leaves no
+        // window behind to explain itself, so the report has to be shown on the
+        // *next* launch. Forwarding here — rather than composing an overlay —
+        // keeps the crash UI in one place and means it renders even if this
+        // screen's own composition is the thing that was crashing.
+        //
+        // CrashScreenGuard bounds this: if the crash screen itself keeps dying
+        // (a crash loop), three rapid showings is enough and we stop
+        // auto-forwarding rather than trapping the user in a loop.
+        if (savedInstanceState == null &&
+            PendingCrash.isPending(this) &&
+            CrashScreenGuard.shouldAutoShow(this)
+        ) {
+            startActivity(Intent(this, CrashActivity::class.java))
+        }
 
         // First launch: hand off to the setup wizard.
         //
@@ -179,6 +200,7 @@ class SettingsActivity : ComponentActivity() {
                     onOpenImeSettings = { openImeSettings() },
                     onOpenImePicker = { openImePicker() },
                     onOpenSandbox = { startActivity(Intent(this, TypingSandboxActivity::class.java)) },
+                    onOpenDebug = { startActivity(Intent(this, CrashActivity::class.java)) },
                     onOpenOnboarding = { startActivity(Intent(this, OnboardingActivity::class.java)) }
                 )
             }
@@ -322,6 +344,7 @@ private fun SettingsScreen(
     onOpenImeSettings: () -> Unit,
     onOpenImePicker: () -> Unit,
     onOpenSandbox: () -> Unit,
+    onOpenDebug: () -> Unit,
     onOpenOnboarding: () -> Unit
 ) {
     val context = LocalContext.current
@@ -346,6 +369,7 @@ private fun SettingsScreen(
                     onOpenImeSettings = onOpenImeSettings,
                     onOpenImePicker = onOpenImePicker,
                     onOpenSandbox = onOpenSandbox,
+                    onOpenDebug = onOpenDebug,
                     onOpenOnboarding = onOpenOnboarding
                 )
             }
@@ -567,6 +591,7 @@ private fun SetupSection(
     onOpenImeSettings: () -> Unit,
     onOpenImePicker: () -> Unit,
     onOpenSandbox: () -> Unit,
+    onOpenDebug: () -> Unit,
     onOpenOnboarding: () -> Unit
 ) {
     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
@@ -632,6 +657,22 @@ private fun SetupSection(
             title = stringResource(R.string.settings_rerun_setup),
             subtitle = stringResource(R.string.settings_rerun_setup_desc),
             onClick = onOpenOnboarding
+        )
+
+        // Diagnostics, always reachable.
+        //
+        // Not hidden behind a debug build flag. The failure this exists for —
+        // the keyboard dying without explanation — happens on the *release*
+        // APK the user actually installed, so a diagnostics entry that only
+        // existed in debug would be useless exactly when it is needed. It also
+        // gives a user who has never had a crash a place to confirm that, which
+        // is itself a useful answer to "is the keyboard actually broken?".
+        Spacer(modifier = Modifier.height(8.dp))
+
+        ActionCard(
+            title = stringResource(R.string.settings_open_debug),
+            subtitle = stringResource(R.string.settings_open_debug_desc),
+            onClick = onOpenDebug
         )
     }
 }
