@@ -5,12 +5,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.SavedStateHandleSupport
-import androidx.lifecycle.SavedStateRegistry
-import androidx.lifecycle.SavedStateRegistryController
-import androidx.lifecycle.SavedStateRegistryOwner
+import androidx.savedstate.SavedStateRegistry
+import androidx.savedstate.SavedStateRegistryController
+import androidx.savedstate.SavedStateRegistryOwner
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.lifecycle.viewmodel.CreationExtras
@@ -106,7 +107,7 @@ class KeyboardLifecycleOwner(
      * `clear()` is called exactly once, from `destroy()`. Everything else is
      * handled by the owner itself.
      */
-    private val viewModelStore = ViewModelStore()
+    override val viewModelStore: ViewModelStore = ViewModelStore()
 
     /**
      * Default creation extras.
@@ -126,8 +127,6 @@ class KeyboardLifecycleOwner(
     }
 
     override val lifecycle: Lifecycle get() = lifecycleRegistry
-
-    override val viewModelStore: ViewModelStore get() = viewModelStore
 
     override val savedStateRegistry: SavedStateRegistry get() = savedStateRegistryController.savedStateRegistry
 
@@ -352,7 +351,7 @@ fun rememberKeyboardLifecycleOwner(application: Application): KeyboardLifecycleO
 fun hasKeyboardViewTreeOwners(): Boolean {
     val view = LocalView.current
     return remember(view) {
-        androidx.lifecycle.ViewTreeLifecycleOwner.get(view) != null
+        view.findViewTreeLifecycleOwner() != null
     }
 }
 

@@ -274,6 +274,7 @@ class KeyboardViewModel(
                 soundEnabled = loaded.soundEnabled,
                 showKeyBorders = loaded.showKeyBorders,
                 showSuggestions = loaded.showSuggestions,
+                clipboardHistoryEnabled = loaded.clipboardHistoryEnabled,
                 keyboardHeightDp = loaded.keyboardHeightDp,
                 oneHandedPreferred = loaded.oneHandedSide,
                 oneHanded = if (isFirst) loaded.oneHandedSide else it.oneHanded
@@ -350,7 +351,7 @@ class KeyboardViewModel(
 
         if (password) {
             // Nothing to learn, nothing to suggest, nothing to remember.
-            lexicon.resetContext()
+            scope.launch { lexicon.resetContext() }
         }
     }
 
@@ -387,7 +388,7 @@ class KeyboardViewModel(
         _uiState.update {
             it.copy(composingPreview = "", composingInput = "", suggestionCount = 0)
         }
-        lexicon.resetContext()
+        scope.launch { lexicon.resetContext() }
     }
 
     /** Called from `onDestroy`. */
@@ -534,7 +535,7 @@ class KeyboardViewModel(
         val state = _uiState.value
         if (state.passwordField) {
             // Literal insertion. No composer, no learning, no suggestions.
-            input.commit(applyShiftToChar(raw, state.shift))
+            input.commit(applyShiftToChar(raw, state.shift).toString())
             return
         }
 
@@ -554,7 +555,7 @@ class KeyboardViewModel(
                 maybeLearnToken(input.wordBeforeCursor())
             }
             else -> {
-                input.commit(applyShiftToChar(raw, state.shift))
+                input.commit(applyShiftToChar(raw, state.shift).toString())
             }
         }
     }
@@ -1073,7 +1074,7 @@ class KeyboardViewModel(
         if (word.isEmpty()) return
         if (input.isPasswordField) return
         if (!prefs.learnWords) return
-        if (!Devanagari.isDevanagariBlock(word.codePointAt(0))) return
+        if (!Devanagari.isDevanagariBlock(word[0])) return
         if (word.length < MIN_LEARNABLE_LENGTH) return
         scope.launch { learnedStore.record(word) }
     }

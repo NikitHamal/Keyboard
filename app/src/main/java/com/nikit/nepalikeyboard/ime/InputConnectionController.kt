@@ -1036,10 +1036,10 @@ class InputConnectionController {
         private const val DOUBLE_SPACE_WINDOW_MS = 350L
 
         /**
-         * Reusable `ExtractedText` used purely to probe whether an editor
-         * implements the extended interface. Allocating a fresh one per field
-         * would be a small but avoidable cost on every focus change.
+         * Reusable request used purely to probe whether an editor
+         * implements the extracted-text interface. Allocating a fresh one per
+         * field would be a small but avoidable cost on every focus change.
          */
-        private val ExtractedTextProbe = android.view.inputmethod.ExtractedText()
+        private val ExtractedTextProbe = android.view.inputmethod.ExtractedTextRequest()
     }
 }

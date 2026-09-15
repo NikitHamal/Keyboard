@@ -229,9 +229,9 @@ object ClipboardCapture {
      * Reads the current primary clip and hands it to [onClipCaptured] if it
      * passes the sensitivity filter.
      *
-     * `ClipDescription.hasMimeType("text/*")` gates out image and URI clips:
-     * the strip renders text only, and an image URI would be a much larger
-     * privacy surface than the feature warrants.
+     * Only text clips pass the MIME gate below: the strip renders text only,
+     * and an image URI would be a much larger privacy surface than the
+     * feature warrants.
      */
     private fun captureCurrent(manager: ClipboardManager) {
         // Android 10+ throws unless we are the foreground app or the active

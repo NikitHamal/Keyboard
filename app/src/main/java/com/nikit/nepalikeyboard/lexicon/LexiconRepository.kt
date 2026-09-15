@@ -283,6 +283,21 @@ class LexiconRepository private constructor(
         }
     }
 
+    /**
+     * Set the bigram context without recording usage.
+     *
+     * Used after committing a literal or transliterated word that the learner
+     * must not count (password fields, clipboard pastes, suggestion commits
+     * the user did not type). Contrast [rememberWord], which both records and
+     * sets the context.
+     */
+    suspend fun setContext(word: String) {
+        if (word.isEmpty()) return
+        withContext(computeDispatcher) {
+            ranker.setContext(word)
+        }
+    }
+
     // ==================================================================
     // Singleton plumbing
     // ==================================================================

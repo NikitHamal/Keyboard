@@ -235,6 +235,15 @@ data class KeyboardUiState(
     val showSuggestions: Boolean = true,
 
     /**
+     * True when clipboard history capture is enabled in settings.
+     *
+     * Mirrored here for the same reason as [showSuggestions]: the preference
+     * observer compares the fresh snapshot against this value to decide
+     * whether a disable must also purge the in-memory history.
+     */
+    val clipboardHistoryEnabled: Boolean = true,
+
+    /**
      * True when the keyboard should wrap toward one edge by preference, so the
      * one-handed toggle can show its engaged state before the user first taps
      * it.

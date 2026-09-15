@@ -514,6 +514,7 @@ private fun RowScope.SpaceKey(
 ) {
     val colors = KeyboardTheme.colors
     var dragging by remember { mutableStateOf(false) }
+    val cdSpace = stringResource(R.string.cd_space)
 
     val label = when (uiState.mode) {
         InputMode.ROMANIZED -> stringResource(R.string.space_hint_romanized)
@@ -528,7 +529,7 @@ private fun RowScope.SpaceKey(
             .padding(horizontal = gaps.horizontal / 2)
             .clip(WideKeyShape)
             .background(colors.keyBackground)
-            .semantics { contentDescription = stringResource(R.string.cd_space) }
+            .semantics { contentDescription = cdSpace }
             .pointerInput(pointsPerCluster, uiState.inputBlocked) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)

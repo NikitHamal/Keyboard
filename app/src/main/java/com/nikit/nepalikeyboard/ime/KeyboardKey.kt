@@ -312,7 +312,7 @@ object KeyboardLayouts {
         Devanagari.NNA.toString(),       // ण
         Devanagari.SHA.toString(),       // श
         Devanagari.SSA.toString(),       // ष
-        Devanagari.CHHA.toString(),      // छ
+        Devanagari.CHA.toString(),       // छ
         Devanagari.SA.toString(),        // स
         Devanagari.YYA.toString()        // य़
     )
