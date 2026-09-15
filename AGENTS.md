@@ -534,11 +534,25 @@ build passing tells you nothing about whether the release APK runs.
 
 `.github/workflows/build-release.yml`. This is the project's only compiler.
 
-**Triggers:** push to `main`, pull request to `main`, `workflow_dispatch`.
+**Triggers:** push to any branch and pull request to any branch, both filtered
+by paths (`app/**`, `gradle/**`, wrapper scripts, root Gradle files,
+`.github/workflows/build-release.yml`, `tools/**`); plus
+`workflow_dispatch` for on-demand builds.
+
+**Jobs:** `build` (compile, verify, upload artifact) then `release` (publish
+a GitHub Release from the uploaded artifact). The release job runs after
+every successful *push* build on any branch — `main` as a full release,
+any other branch as a prerelease — and never on pull requests. The in-app
+updater polls `releases/latest`, which GitHub resolves to the newest full
+release, so branch builds are downloadable without being offered as updates.
+
+**Least privilege:** the workflow defaults to `contents: read`. Only the
+`release` job holds `contents: write`, and it never runs Gradle — the APK it
+publishes is the exact artifact the build job verified.
 
 **Runner:** `ubuntu-latest`, JDK 21 (Temurin), `timeout-minutes: 45`.
 
-**Steps, in order:**
+**Build steps, in order:**
 
 1. `actions/checkout@v4` — `fetch-depth: 1`
 2. `actions/setup-python@v5` — Python 3.13
@@ -551,6 +565,10 @@ build passing tells you nothing about whether the release APK runs.
    `app/build.gradle.kts`, `git rev-parse --short HEAD`)
 9. Verify the APK
 10. `actions/upload-artifact@v4` — `if-no-files-found: error`
+
+**Release steps:** `actions/download-artifact@v4` by the exact build-job
+name, then `softprops/action-gh-release@v2` with
+`fail_on_unmatched_files: true`.
 
 ### Why the source checks run before the JDK
 
