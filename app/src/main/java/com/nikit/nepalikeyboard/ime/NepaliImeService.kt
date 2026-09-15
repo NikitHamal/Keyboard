@@ -17,6 +17,7 @@ import android.view.inputmethod.InputMethodManager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Recomposer
 import androidx.compose.runtime.remember
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.createLifecycleAwareWindowRecomposer
 import androidx.lifecycle.setViewTreeLifecycleOwner
@@ -244,6 +245,7 @@ class NepaliImeService : InputMethodService() {
      * `viewModel()`, `LaunchedEffect`, `collectAsStateWithLifecycle` — behave
      * exactly as it would inside an activity.
      */
+    @OptIn(ExperimentalComposeUiApi::class)
     override fun onCreateInputView(): View {
         val owner = keyboardLifecycle
         val vm = viewModel ?: error("ViewModel requested before service onCreate")
@@ -311,9 +313,9 @@ class NepaliImeService : InputMethodService() {
             // the untagged dialog root, with lifecycle pause/close included.
             // -----------------------------------------------------------------
             tearDownComposition()
-            val recomposer = view.createLifecycleAwareWindowRecomposer()
+            val recomposer = createLifecycleAwareWindowRecomposer()
             imeRecomposer = recomposer
-            view.setParentCompositionContext(recomposer)
+            setParentCompositionContext(recomposer)
             recomposerJob = scope.launch { recomposer.runRecomposeAndApplyChanges() }
 
             setContent {
