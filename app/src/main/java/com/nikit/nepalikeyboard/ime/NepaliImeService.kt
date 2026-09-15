@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Recomposer
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.createLifecycleAwareWindowRecomposer
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
@@ -151,13 +152,13 @@ class NepaliImeService : InputMethodService() {
     private var inputView: View? = null
 
     /**
-     * The service-owned Compose `Recomposer` driving the keyboard composition.
+     * The lifecycle-aware Compose `Recomposer` driving the keyboard composition.
      *
-     * Created in [onCreate] and closed in [onDestroy]. Owning the recomposer
-     * is what makes the keyboard immune to the window it is hosted in: with
-     * an explicit parent composition context the framework never consults the
-     * window hierarchy, so a bare OEM dialog root without view-tree owners
-     * cannot crash composition startup. See `onCreateInputView`.
+     * Built per input view via `createLifecycleAwareWindowRecomposer` anchored
+     * at the input view itself (see `onCreateInputView`), closed when the view
+     * is replaced and in `onDestroy`. Owning the recomposer is what makes the
+     * keyboard immune to the window it is hosted in: with an explicit parent
+     * composition context the framework never consults the window hierarchy.
      */
     private var imeRecomposer: Recomposer? = null
 
@@ -188,16 +189,14 @@ class NepaliImeService : InputMethodService() {
     /**
      * Called once per service instance, before any view exists.
      *
-     * Does six things, in the order they must happen:
+     * Does five things, in the order they must happen:
      *   1. Resolve the vibrator, because a failure here should be discovered
      *      before the first keypress, not during it.
      *   2. Build and `create()` the lifecycle owner, so the ViewModelStore and
      *      saved-state registry exist before anything asks for them.
      *   3. Build the service scope.
      *   4. Construct the ViewModel against the owner.
-     *   5. Create the service-owned `Recomposer` and start its loop, so a
-     *      composition context exists before any view asks for one.
-     *   6. Install clipboard capture.
+     *   5. Install clipboard capture.
      *
      * Note what is *not* here: loading the lexicon. That was already kicked off
      * by `NepaliKeyboardApp.onCreate`, and starting it again here would be
@@ -213,15 +212,6 @@ class NepaliImeService : InputMethodService() {
         serviceScope = scope
 
         viewModel = KeyboardViewModel(application, keyboardLifecycle, input, scope)
-
-        // Own recomposer, started before any view exists. A `Recomposer` is a
-        // `CompositionContext`, so handing it to the input view makes the
-        // window hierarchy irrelevant to composition startup — which is the
-        // entire parentPanel crash class. Runs on the service scope so it dies
-        // with the service; closed explicitly in `onDestroy`.
-        val recomposer = Recomposer(scope.coroutineContext)
-        imeRecomposer = recomposer
-        recomposerJob = scope.launch { recomposer.runRecomposeAndApplyChanges() }
 
         // One-shot signals the ViewModel cannot act on itself. `requestHideSelf`
         // is a framework call that only the service may make, so it lives here
@@ -257,7 +247,7 @@ class NepaliImeService : InputMethodService() {
     override fun onCreateInputView(): View {
         val owner = keyboardLifecycle
         val vm = viewModel ?: error("ViewModel requested before service onCreate")
-        val recomposer = imeRecomposer ?: error("Recomposer requested before service onCreate")
+        val scope = serviceScope ?: error("Scope requested before service onCreate")
 
         val view = ComposeView(this).apply {
             // The keyboard must not take focus from the editor. A ComposeView
@@ -297,7 +287,7 @@ class NepaliImeService : InputMethodService() {
             setViewTreeSavedStateRegistryOwner(owner)
 
             // -----------------------------------------------------------------
-            // Compose with our own Recomposer, never the window's.
+            // Compose with a lifecycle-aware Recomposer anchored at THIS view.
             //
             // Tagging alone cannot fix the parentPanel crash: the failing
             // lookup runs against the window *root* (an AlertDialog
@@ -311,8 +301,20 @@ class NepaliImeService : InputMethodService() {
             // never called. The owners tagged above still serve every
             // `LocalLifecycleOwner` / `rememberSaveable` / `viewModel()`
             // lookup inside the composition.
+            //
+            // The recomposer is NOT hand-built with `Recomposer(context)`:
+            // that constructor demands a `MonotonicFrameClock` in the given
+            // context, and hand-rolling a Choreographer-driven clock is both
+            // error-prone and unnecessary. `createLifecycleAwareWindowRecomposer`
+            // is the framework's own factory — the same wiring every Activity
+            // gets — anchored here at our already-tagged view instead of at
+            // the untagged dialog root, with lifecycle pause/close included.
             // -----------------------------------------------------------------
-            setParentCompositionContext(recomposer)
+            tearDownComposition()
+            val recomposer = view.createLifecycleAwareWindowRecomposer()
+            imeRecomposer = recomposer
+            view.setParentCompositionContext(recomposer)
+            recomposerJob = scope.launch { recomposer.runRecomposeAndApplyChanges() }
 
             setContent {
                 InstallKeyboardViewTreeOwners(owner) {
@@ -521,6 +523,29 @@ class NepaliImeService : InputMethodService() {
     override fun onDestroy() {
         viewModel?.onServiceDestroying()
         uninstallClipboardCapture()
+        tearDownComposition()
+        keyboardLifecycle.destroy()
+        serviceScope?.cancel()
+        serviceScope = null
+        viewModel = null
+        vibrator = null
+        currentEditorInfo = null
+        super.onDestroy()
+        Log.d(TAG, "Service destroyed")
+    }
+
+    /**
+     * Disposes the current input composition, closes its recomposer, and stops
+     * the recompose loop.
+     *
+     * Called from `onCreateInputView` before a replacement view takes over
+     * (a view recreated without a service restart must not leak the old
+     * composition or leave two recomposers running) and from `onDestroy`.
+     * Every step is guarded and the fields are nulled even on failure, so a
+     * half-torn-down composition can never be re-entered. First-run no-ops:
+     * all three fields start null.
+     */
+    private fun tearDownComposition() {
         try {
             (inputView as? ComposeView)?.disposeComposition()
         } catch (t: Throwable) {
@@ -535,14 +560,6 @@ class NepaliImeService : InputMethodService() {
         imeRecomposer = null
         recomposerJob?.cancel()
         recomposerJob = null
-        keyboardLifecycle.destroy()
-        serviceScope?.cancel()
-        serviceScope = null
-        viewModel = null
-        vibrator = null
-        currentEditorInfo = null
-        super.onDestroy()
-        Log.d(TAG, "Service destroyed")
     }
 
     // =========================================================================
