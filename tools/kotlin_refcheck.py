@@ -432,6 +432,7 @@ ALLOW |= set(
     mutableIntStateOf showInputMethodPicker verticalScroll
     setParentCompositionContext disposeComposition close
     focusRequester show requestFocus createLifecycleAwareWindowRecomposer
+    AndroidUiDispatcher
     """.split()
 )
 
