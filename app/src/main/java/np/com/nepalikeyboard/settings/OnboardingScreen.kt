@@ -158,35 +158,35 @@ fun OnboardingScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (step > 0 && step < STEP_COUNT - 1) {
-                SettingsActionRow(
+                SettingActionRow(
                     label = stringResource(R.string.onboarding_back),
                     onClick = { step -= 1 },
                     modifier = Modifier.weight(1f),
                 )
             }
             when (step) {
-                0 -> SettingsActionRow(
+                0 -> SettingActionRow(
                     label = stringResource(R.string.onboarding_next),
                     onClick = { step = 1 },
                     modifier = Modifier.weight(1f),
                     emphasised = true,
                 )
 
-                1 -> SettingsActionRow(
+                1 -> SettingActionRow(
                     label = stringResource(R.string.onboarding_enable_action),
                     onClick = { AppCatalog.openInputMethodSettings(context) },
                     modifier = Modifier.weight(1f),
                     emphasised = true,
                 )
 
-                2 -> SettingsActionRow(
+                2 -> SettingActionRow(
                     label = stringResource(R.string.onboarding_select_action),
                     onClick = { AppCatalog.showInputMethodPicker(context) },
                     modifier = Modifier.weight(1f),
                     emphasised = true,
                 )
 
-                else -> SettingsActionRow(
+                else -> SettingActionRow(
                     label = stringResource(R.string.onboarding_finish),
                     onClick = onFinished,
                     modifier = Modifier.weight(1f),
@@ -196,7 +196,7 @@ fun OnboardingScreen(
         }
         if (step == 1 || step == 2) {
             Spacer(Modifier.height(6.dp))
-            SettingsActionRow(
+            SettingActionRow(
                 label = stringResource(R.string.onboarding_next),
                 onClick = { step += 1 },
             )

@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import np.com.nepalikeyboard.R
 import np.com.nepalikeyboard.data.ClipboardEntry
+import np.com.nepalikeyboard.ime.ImePanel
 import np.com.nepalikeyboard.ime.ImeUiState
 import np.com.nepalikeyboard.ime.KeyboardActionSink
 import np.com.nepalikeyboard.ui.theme.KeyboardTokens
@@ -220,10 +222,14 @@ private fun PanelChip(
 
 @Composable
 private fun PanelMessage(text: String, tokens: KeyboardTokens) {
+    // `Modifier.weight` is only available inside a `Row`/`Column` scope, so the
+    // empty-state box claims the leftover height with `fillMaxHeight()` instead
+    // of `weight(1f)` — this composable is called from a plain `Column`, not
+    // from a `ColumnScope` receiver.
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .weight(1f)
+            .fillMaxHeight()
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center,
     ) {

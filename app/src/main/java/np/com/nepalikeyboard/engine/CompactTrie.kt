@@ -23,7 +23,7 @@ package np.com.nepalikeyboard.engine
  * The trie is built once on `Dispatchers.Default` at startup and never mutated
  * afterwards, so every consumer (candidate worker) may read it lock free.
  */
-internal class CompactTrie private constructor(
+internal class CompactTrie internal constructor(
     @JvmField val childChars: CharArray,
     @JvmField val childNodes: IntArray,
     @JvmField val childStart: IntArray,

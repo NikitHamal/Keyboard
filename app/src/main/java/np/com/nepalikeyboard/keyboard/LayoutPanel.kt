@@ -130,8 +130,11 @@ fun LayoutPanel(
                 value = state.keyboardHeightScale.coerceIn(0.7f, 1.5f),
                 valueRange = 0.7f..1.5f,
                 tokens = tokens,
+                onValueChangeFinished = { value ->
+                    writer.write { setKeyboardHeightScale(value) }
+                },
                 // Height is applied through the sink so the input view resizes
-                // immediately; the controller is what persists it.
+                // immediately; the completed value is what gets persisted.
                 onValueChange = { value -> sink.onKeyboardHeightRequested(value) },
             )
 

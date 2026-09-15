@@ -198,12 +198,20 @@ fun SettingInfoRow(
     }
 }
 
-/** Horizontal single-choice row: one pill per option, the selected one tinted. */
+/**
+ * Horizontal single-choice row: one pill per option, the selected one tinted.
+ *
+ * [labelOf] is a `@Composable` lambda rather than a plain one so that callers can
+ * resolve their labels with `stringResource`, which is itself composable. Making
+ * it plain would force every caller to hoist the resource lookups into a
+ * precomputed map, which is both boilerplate and a correctness hazard: a map
+ * built once would keep serving the old language after a locale change.
+ */
 @Composable
 fun <T> SettingChoiceRow(
     options: List<T>,
     selected: T,
-    labelOf: (T) -> String,
+    labelOf: @Composable (T) -> String,
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier,
     devanagari: (T) -> Boolean = { false },

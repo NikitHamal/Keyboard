@@ -22,7 +22,7 @@ import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardCapslock
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Shift
+import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.ViewWeek
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -43,6 +43,9 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.density
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.MeasurePolicy
@@ -404,7 +407,11 @@ private fun KeyContent(
         )
 
         KeyKind.SHIFT -> KeyIcon(
-            icon = if (key.label.isEmpty()) Icons.Filled.Shift else Icons.Filled.KeyboardCapslock,
+            // `KeyboardCapslock` is the shift glyph in the *core* Material icons
+            // set. The extended set's `Shift` would draw the same arrow, but it
+            // never shipped in this BOM, so using it would be an unresolved
+            // reference for a cosmetic difference at most.
+            icon = Icons.Filled.KeyboardCapslock,
             color = color,
             labelSize = labelSize,
         )
@@ -572,10 +579,14 @@ private fun Modifier.keyboardGestures(
     sinkState: State<KeyboardActionSink>,
     configState: State<KeyboardGestureConfig>,
     feedbackState: State<KeyboardFeedback>,
-): Modifier = this.pointerInput(geometry, interaction) {
-    val slop = viewConfiguration.touchSlop
-    val longPressTimeout = viewConfiguration.longPressTimeoutMillis
-    val densityScale = density.density
+): Modifier {
+    // `LocalDensity` can only be read from a composable, and the pointer handler
+    // below is not one. Reading it here and closing over the resolved scale
+    // keeps the hot path free of a composition-local lookup on every event.
+    val densityScale = LocalDensity.current.density
+    return this.pointerInput(geometry, interaction) {
+        val slop = viewConfiguration.touchSlop
+        val longPressTimeout = viewConfiguration.longPressTimeoutMillis
 
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false)
@@ -745,6 +756,7 @@ private fun Modifier.keyboardGestures(
                 }
             }
             change.consume()
+            }
         }
     }
 }

@@ -94,7 +94,7 @@ fun TypingScreen(modifier: Modifier = Modifier) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            SettingsActionRow(
+            SettingActionRow(
                 label = stringResource(R.string.sandbox_clear),
                 onClick = { controller.clear() },
                 modifier = Modifier.weight(1f),

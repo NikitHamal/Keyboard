@@ -3,6 +3,7 @@ package np.com.nepalikeyboard.ime
 import android.view.View
 import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.OnBackPressedDispatcherOwner
+import androidx.activity.setViewTreeOnBackPressedDispatcherOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
@@ -14,7 +15,6 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
-import androidx.activity.ViewTreeOnBackPressedDispatcherOwner
 
 /**
  * Lifecycle plumbing that lets Jetpack Compose run inside an
@@ -67,7 +67,7 @@ internal class ComposeOwnerBridge(
         hostView.setViewTreeLifecycleOwner(this)
         hostView.setViewTreeViewModelStoreOwner(this)
         hostView.setViewTreeSavedStateRegistryOwner(this)
-        ViewTreeOnBackPressedDispatcherOwner.set(hostView, this)
+        hostView.setViewTreeOnBackPressedDispatcherOwner(this)
     }
 
     /** Called from `onStartInputView`: the keyboard is on screen and interactive. */

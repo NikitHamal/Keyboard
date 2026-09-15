@@ -6,6 +6,7 @@ import np.com.nepalikeyboard.data.OneHandedSide
 import np.com.nepalikeyboard.data.SettingsSnapshot
 import np.com.nepalikeyboard.engine.Candidate
 import np.com.nepalikeyboard.keyboard.FeedbackConfig
+import np.com.nepalikeyboard.keyboard.KeyDef
 import np.com.nepalikeyboard.keyboard.KeyboardLayout
 import np.com.nepalikeyboard.keyboard.LayoutId
 import np.com.nepalikeyboard.util.EmojiCategory

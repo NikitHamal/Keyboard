@@ -248,7 +248,7 @@ class Lexicon private constructor(
         }
 
         /** Synchronous builder, exposed for unit tests and the sandbox. */
-        fun build(asset: LexiconAssetDto): Lexicon {
+        internal fun build(asset: LexiconAssetDto): Lexicon {
             val entryList = ArrayList<LexiconEntry>(asset.words.size)
             val romanKeys = LinkedHashMap<String, Int>(asset.words.size * 2)
             val devanagariKeys = LinkedHashMap<String, Int>(asset.words.size)

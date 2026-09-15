@@ -99,7 +99,7 @@ fun DictionaryScreen(
                     onValueChange = { roman = it },
                     modifier = Modifier.weight(1f),
                 )
-                SettingsActionRow(
+                SettingActionRow(
                     label = stringResource(R.string.dictionary_add),
                     onClick = {
                         if (word.isNotBlank()) {
