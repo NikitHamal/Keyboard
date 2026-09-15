@@ -21,6 +21,11 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.IOException
 
+// The `preferencesDataStore` delegate must be a top-level property, so it hangs
+// off `Context` rather than off the class. That makes every use inside
+// [SettingsRepository] an extension access on an explicit `Context` receiver
+// (`context.settingsDataStore`) — writing a bare `settingsDataStore` there would
+// resolve against the class as dispatch receiver and fail.
 private val Context.settingsDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "nepali_keyboard_settings",
 )
@@ -42,7 +47,7 @@ class SettingsRepository(
     var current: SettingsSnapshot = SettingsSnapshot.Default
         private set
 
-    val snapshotState: StateFlow<SettingsSnapshot> = settingsDataStore.data
+    val snapshotState: StateFlow<SettingsSnapshot> = context.settingsDataStore.data
         .catch { throwable ->
             // A corrupt preferences file must never brick the keyboard: fall back
             // to defaults and keep emitting so the UI stays functional.
@@ -121,7 +126,7 @@ class SettingsRepository(
 
     /** Restores every preference to its compiled-in default. */
     suspend fun resetToDefaults() {
-        settingsDataStore.edit { prefs ->
+        context.settingsDataStore.edit { prefs ->
             prefs.clear()
             prefs[Keys.SCHEMA_VERSION] = SettingsSnapshot.SETTINGS_SCHEMA_VERSION
         }
@@ -132,7 +137,7 @@ class SettingsRepository(
     // -----------------------------------------------------------------------
 
     private suspend fun <T> write(key: Preferences.Key<T>, value: T) {
-        settingsDataStore.edit { prefs -> prefs[key] = value }
+        context.settingsDataStore.edit { prefs -> prefs[key] = value }
     }
 
     private fun read(prefs: Preferences): SettingsSnapshot {

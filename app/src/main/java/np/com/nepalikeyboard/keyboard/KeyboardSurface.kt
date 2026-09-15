@@ -45,7 +45,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.unit.density
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.MeasurePolicy
@@ -571,7 +570,13 @@ private fun LongPressOverlay(
  * `event.changes` with a for-loop instead of `firstOrNull { }` (which would
  * allocate a capturing lambda on every pointer event), and never builds a Rect,
  * an Offset or a list.
+ *
+ * This is a `@Composable` because it needs `LocalDensity` to resolve the dp-based
+ * gesture thresholds into pixels. That happens once per composition, not per
+ * pointer event: the resolved scale is captured and reused inside the
+ * `pointerInput` block, so the dispatch path stays allocation-free.
  */
+@Composable
 private fun Modifier.keyboardGestures(
     geometry: KeyboardGeometry,
     interaction: KeyboardInteractionState,
