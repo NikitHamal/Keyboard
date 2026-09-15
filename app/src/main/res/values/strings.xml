@@ -12,7 +12,7 @@
     <string name="key_shift" translatable="false">⇧</string>
     <string name="key_capslock" translatable="false">⇪</string>
     <string name="key_backspace" translatable="false">⌫</string>
-    <string name="key_symbols" translatable="false">?123</string>
+    <string name="key_symbols" translatable="false">\?123</string>
     <string name="key_letters" translatable="false">ABC</string>
     <string name="key_more_symbols" translatable="false">=\\&lt;</string>
     <string name="key_space" translatable="false"> </string>
