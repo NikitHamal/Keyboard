@@ -17,6 +17,7 @@
 import com.android.build.api.dsl.ApplicationExtension
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.agp.application)
@@ -104,7 +105,7 @@ configure<ApplicationExtension> {
     // credentials live in keystore/ on purpose: the private key is public, so
     // CI can sign without secrets. Never use it for store distribution.
     val keystorePropsFile = rootProject.file("keystore/release.keystore.properties")
-    val keystoreProps = java.util.Properties()
+    val keystoreProps = Properties()
     if (keystorePropsFile.exists()) {
         keystorePropsFile.inputStream().use { keystoreProps.load(it) }
     }
