@@ -64,6 +64,12 @@
         "direction": "ltr"
       },
       {
+        "id": "nepali_devanagari",
+        "label": "नेपाली",
+        "authors": [ "NikitHamal" ],
+        "direction": "ltr"
+      },
+      {
         "id": "bepo",
         "label": "BÉPO",
         "authors": [ "salamandar" ],

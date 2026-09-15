@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Policy
@@ -100,6 +101,12 @@ fun AboutScreen() = FlorisScreen {
             title = stringRes(R.string.about__changelog__title),
             summary = stringRes(R.string.about__changelog__summary),
             onClick = { context.launchUrl(R.string.florisboard__changelog_url, "version" to BuildConfig.VERSION_NAME) },
+        )
+        Preference(
+            icon = Icons.Filled.SystemUpdate,
+            title = stringRes(R.string.about__app_updates__title),
+            summary = stringRes(R.string.about__app_updates__summary),
+            onClick = { navController.navigate(Routes.Settings.AppUpdates) },
         )
         Preference(
             icon = Icons.Default.Code,

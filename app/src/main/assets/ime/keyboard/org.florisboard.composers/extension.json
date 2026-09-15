@@ -12,6 +12,7 @@
     { "$": "appender" },
     { "$": "hangul-unicode" },
     { "$": "kana-unicode" },
+    { "$": "nepali-romanized" },
     { "$": "with-rules",
       "id": "telex",
       "label": "Telex",

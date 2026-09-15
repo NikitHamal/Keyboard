@@ -49,6 +49,7 @@
     { "id": "fo", "authors": [ "BinFlush" ] },
     { "id": "fr", "authors": [ "patrickgold" ] },
     { "id": "hi-IN", "authors": [ "npnpatidar" ] },
+    { "id": "ne", "authors": [ "NikitHamal" ] },
     { "id": "hr", "authors": [ "hedidnothingwrong" ] },
     { "id": "hu", "authors": [ "zoli111, gabik65" ] },
     { "id": "hy", "authors": [ "PJTSearch" ] },
@@ -771,6 +772,29 @@
       "popupMapping": "org.florisboard.localization:kab",
       "preferred": {
         "characters": "org.florisboard.layouts:qwerty"
+      }
+    },
+    {
+      "languageTag": "ne-NP",
+      "composer": "org.florisboard.composers:appender",
+      "currencySet": "org.florisboard.currencysets:indian_rupee",
+      "popupMapping": "org.florisboard.localization:ne",
+      "preferred": {
+        "characters": "org.florisboard.layouts:nepali_devanagari",
+        "numericRow": "org.florisboard.layouts:devanagari"
+      }
+    },
+    {
+      "languageTag": "ne-NP",
+      "composer": "org.florisboard.composers:nepali-romanized",
+      "currencySet": "org.florisboard.currencysets:indian_rupee",
+      "popupMapping": "org.florisboard.localization:en",
+      "nlpProviders": {
+        "suggestion": "com.nikit.nepalikeyboard.nlp.providers.nepali.lexicon"
+      },
+      "preferred": {
+        "characters": "org.florisboard.layouts:qwerty",
+        "numericRow": "org.florisboard.layouts:western_arabic"
       }
     }
   ]
