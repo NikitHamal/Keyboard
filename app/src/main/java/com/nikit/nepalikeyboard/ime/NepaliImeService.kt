@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Recomposer
 import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.platform.AndroidUiDispatcher
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.createLifecycleAwareWindowRecomposer
 import androidx.lifecycle.setViewTreeLifecycleOwner
@@ -316,7 +317,15 @@ class NepaliImeService : InputMethodService() {
             val recomposer = createLifecycleAwareWindowRecomposer()
             imeRecomposer = recomposer
             setParentCompositionContext(recomposer)
-            recomposerJob = scope.launch { recomposer.runRecomposeAndApplyChanges() }
+            // Launch on AndroidUiDispatcher.Main, which is the Choreographer-backed
+            // dispatcher that provides a MonotonicFrameClock. The service scope's
+            // Dispatchers.Main.immediate does NOT provide one, and
+            // runRecomposeAndApplyChanges requires it in the calling coroutine's
+            // context — launching without it crashes with "A MonotonicFrameClock
+            // is not available in this CoroutineContext".
+            recomposerJob = scope.launch(AndroidUiDispatcher.Main) {
+                recomposer.runRecomposeAndApplyChanges()
+            }
 
             setContent {
                 InstallKeyboardViewTreeOwners(owner) {
