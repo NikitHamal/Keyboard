@@ -243,6 +243,7 @@ ALLOW = set(
     moveToPrevious mapMutable multiplyAll multiset mutableListOf mutableMapOf
     mutableSetOf mutate name nCopies next nextBoundary nextFloat nextInt minusAssign
     none normalize not notEmpty notify on onAvailable onChange onCommit onDispose
+    onGloballyPositioned
     onLongPress onPress onRelease onSizeChanged onTextLayout or ordinal
     package padEnd padStart paint pair parseAsConstantFont parseAsVariableFont
     parseFontFile parseGlyph parsePath partition pathPercent peek percentAt
@@ -253,9 +254,10 @@ ALLOW = set(
     refresh remove removeAt removeFirst removeLast removeRange
     renderComposing renderCommitted repeat repeatOnLifecycle replace
     replaceAll requireNotNull reset resetContext reshape resolvedBy resize
-    resolve resolveAsRes resample retarget restoreTo retainAll reverse rounded
+    resolve resolveAsRes resample retarget restoreTo retainAll reverse roundToInt rounded
     runCatching runBlocking sampledAt sampleAt scale scrollTo second select
     selectAll selectAt segmentAt segmentedAt send sequenceOf setSelection
+    shadow
     single singleOrNull size slice sizedAt slotAt sorted sortedBy sortedByDescending
     sortedWith sortWith split sqrt squareAt start startsWith stateIsBlockAt
     step stop storeAt stripAt subSequence substring substringAfter substringBefore

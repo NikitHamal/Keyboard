@@ -27,10 +27,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalViewConfiguration
@@ -132,24 +135,50 @@ fun KeyboardKeyView(
      * a long press on a top-row key produces. Purely presentational; the
      * caller wires the matching long-press behaviour.
      */
-    hint: String? = null
+    hint: String? = null,
+    /**
+     * Identity under which this key reports press previews, or null when the
+     * key shows no preview. Content keys pass their own [KeyboardKey]
+     * instance; modifiers pass a stable string id.
+     */
+    previewKey: Any? = null,
+    /**
+     * Receives `(previewKey, preview)` on press and `(previewKey, null)` on
+     * release. The surface renders the latest non-null preview it holds.
+     */
+    onPreviewChange: ((Any, KeyPreview?) -> Unit)? = null
 ) {
     // Read outside the pointer lambda so the handler closure does not capture
     // the Composition scope.
     val currentOnPress by rememberUpdatedState(onPress)
-    val currentPressOnDown by rememberUpdatedState(pressOnDown)
     val currentOnDrag by rememberUpdatedState(onDrag)
     val currentOnDragEnd by rememberUpdatedState(onDragEnd)
     val currentOnLongPress by rememberUpdatedState(onLongPress)
+    val currentPressOnDown by rememberUpdatedState(pressOnDown)
+    // The preview is built at gesture time, potentially several compositions
+    // after the values below changed (shift toggles the label while a finger
+    // is down elsewhere), so each of them is read through an updated-state
+    // holder rather than captured.
+    val currentPreviewLabel by rememberUpdatedState(label)
+    val currentPreviewIcon by rememberUpdatedState(icon)
+    val currentPreviewBackground by rememberUpdatedState(background)
+    val currentPreviewContentColor by rememberUpdatedState(contentColor)
+    val currentPreviewStyle by rememberUpdatedState(style)
+    val currentRootCoordinates by rememberUpdatedState(LocalKeyboardRootCoordinates.current)
+    val currentOnPreviewChange by rememberUpdatedState(onPreviewChange)
 
     var pressed by remember { mutableStateOf(false) }
+    var keyCoordinates: LayoutCoordinates? by remember { mutableStateOf(null) }
 
     val viewConfiguration = LocalViewConfiguration.current
 
     // The caller's modifier chain is applied first so that width/weight and
     // layout params take effect before our own visual and input modifiers.
+    // The resting shadow comes before the clip so the shadow keeps the key
+    // shape while the label stays inside it.
     val boxModifier = modifier
         .fillMaxHeight()
+        .shadow(KEY_RESTING_SHADOW, shape)
         .clip(shape)
         .background(if (pressed) pressedBackground else background)
         .then(
@@ -160,6 +189,7 @@ fun KeyboardKeyView(
             }
         )
         .semantics { contentDescription?.let { this.contentDescription = it } }
+        .onGloballyPositioned { keyCoordinates = it }
         .pointerInput(Unit) {
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false)
@@ -169,6 +199,35 @@ fun KeyboardKeyView(
                 // release because it carries a long-press alternate. This is
                 // the line that makes typing feel instant.
                 if (currentPressOnDown) currentOnPress()
+
+                // Publish the press preview. The bounds are translated into
+                // surface space here, at gesture time, because the surface
+                // may have moved since the coordinates were reported.
+                if (previewKey != null) {
+                    val root = currentRootCoordinates
+                    val self = keyCoordinates
+                    val bounds = if (root != null && self != null &&
+                        root.isAttached && self.isAttached
+                    ) {
+                        root.localBoundingBoxOf(self, clipBounds = false)
+                    } else {
+                        null
+                    }
+                    currentOnPreviewChange?.invoke(
+                        previewKey,
+                        bounds?.let {
+                            KeyPreview(
+                                key = previewKey,
+                                label = currentPreviewLabel,
+                                icon = currentPreviewIcon,
+                                background = currentPreviewBackground,
+                                contentColor = currentPreviewContentColor,
+                                textStyle = currentPreviewStyle,
+                                bounds = it
+                            )
+                        }
+                    )
+                }
 
                 // Track the gesture for drag-aware keys.
                 var totalDx = 0f
@@ -216,6 +275,9 @@ fun KeyboardKeyView(
 
                 pressed = false
                 if (dragClaimed) currentOnDragEnd?.invoke()
+                // The finger is up: withdraw this key's preview, unless
+                // another key has already replaced it (two-finger presses).
+                if (previewKey != null) currentOnPreviewChange?.invoke(previewKey, null)
             }
         }
 
@@ -252,6 +314,15 @@ fun KeyboardKeyView(
         }
     }
 }
+
+/**
+ * Resting elevation of a key.
+ *
+ * 2 dp, matching the platform keyboards' key shadow and FlorisBoard's default
+ * key `shadowElevation`. It is what lifts the keys off the surface; without
+ * it the grid reads as flat paint rather than pressable targets.
+ */
+private val KEY_RESTING_SHADOW = 2.dp
 
 /**
  * The canonical key corner radius.
@@ -319,6 +390,11 @@ fun KeyRow(
     hints: List<String>? = null,
     /** Fired with the hint when a hinted key is long-pressed, if any. */
     onLongPressHint: ((String) -> Unit)? = null,
+    /**
+     * Preview callback for every key in the row; each key reports under its
+     * own [KeyboardKey] instance. Null disables previews for the whole row.
+     */
+    onPreviewChange: ((Any, KeyPreview?) -> Unit)? = null,
     onKey: (KeyboardKey) -> Unit
 ) {
     Row(
@@ -344,6 +420,8 @@ fun KeyRow(
                 showBorder = showBorder,
                 hint = hint,
                 pressOnDown = hint == null,
+                previewKey = key,
+                onPreviewChange = onPreviewChange,
                 onLongPress = if (hint != null && onLongPressHint != null) {
                     { onLongPressHint.invoke(hint) }
                 } else {
@@ -417,7 +495,14 @@ fun RowScope.ModifierKey(
      * system IME picker — which is where every Android user reaches for
      * "I want a different keyboard".
      */
-    onLongPress: (() -> Unit)? = null
+    onLongPress: (() -> Unit)? = null,
+    /**
+     * Identity under which this modifier reports press previews (see
+     * [KeyboardKeyView]), or null for no preview.
+     */
+    previewKey: Any? = null,
+    /** Preview callback, forwarded to [KeyboardKeyView]. */
+    onPreviewChange: ((Any, KeyPreview?) -> Unit)? = null
 ) {
     KeyboardKeyView(
         label = label,
@@ -436,6 +521,8 @@ fun RowScope.ModifierKey(
         onPress = onPress,
         onDrag = onDrag,
         onDragEnd = onDragEnd,
-        onLongPress = onLongPress
+        onLongPress = onLongPress,
+        previewKey = previewKey,
+        onPreviewChange = onPreviewChange
     )
 }

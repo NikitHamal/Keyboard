@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Backspace
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -36,6 +37,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
@@ -174,106 +177,135 @@ private fun KeyboardSurface(
         if (uiState.mode.isPanelMode) toolbarExpanded = false
     }
 
+    // The surface's own coordinates, published for the key preview popups so
+    // pressed keys can translate themselves into this Box's space.
+    var rootCoordinates: LayoutCoordinates? by remember { mutableStateOf(null) }
+
+    // The currently visible press preview, if any. A single nullable pair —
+    // (key id, preview) — so a release for a stale id cannot clear a newer
+    // key's popup during two-finger presses.
+    var previewState: Pair<Any, KeyPreview>? by remember { mutableStateOf(null) }
+    val onPreviewChange: (Any, KeyPreview?) -> Unit = { id, preview ->
+        if (preview != null) {
+            previewState = id to preview
+        } else if (previewState?.first == id) {
+            previewState = null
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(keyboardHeight)
             .background(colors.keyboardSurface)
+            .onGloballyPositioned { rootCoordinates = it }
     ) {
-        Row(modifier = Modifier.fillMaxSize()) {
-            if (uiState.oneHanded == OneHandedSide.RIGHT) {
-                // Docked right: space on the left.
-                Spacer(modifier = Modifier.weight(ONE_HANDED_EMPTY_WEIGHT))
-            }
+        CompositionLocalProvider(
+            LocalKeyboardRootCoordinates provides rootCoordinates
+        ) {
+            Row(modifier = Modifier.fillMaxSize()) {
+                if (uiState.oneHanded == OneHandedSide.RIGHT) {
+                    // Docked right: space on the left.
+                    Spacer(modifier = Modifier.weight(ONE_HANDED_EMPTY_WEIGHT))
+                }
 
-            Column(
-                modifier = Modifier
-                    .weight(ONE_HANDED_FILL_WEIGHT)
-                    .fillMaxHeight()
-            ) {
-                SuggestionStrip(
-                    suggestions = suggestions,
-                    composingPreview = uiState.composingPreview,
-                    composingInput = uiState.composingInput,
-                    modeHint = modeHintFor(uiState),
-                    showSuggestions = uiState.showSuggestions,
-                    toolbarExpanded = toolbarExpanded,
-                    onToolbarToggle = { toolbarExpanded = !toolbarExpanded },
-                    uiState = uiState,
-                    viewModel = viewModel,
-                    serviceActions = serviceActions,
-                    onSuggestionCommitted = viewModel::onSuggestionCommitted
-                )
+                Column(
+                    modifier = Modifier
+                        .weight(ONE_HANDED_FILL_WEIGHT)
+                        .fillMaxHeight()
+                ) {
+                    SuggestionStrip(
+                        suggestions = suggestions,
+                        composingPreview = uiState.composingPreview,
+                        composingInput = uiState.composingInput,
+                        modeHint = modeHintFor(uiState),
+                        showSuggestions = uiState.showSuggestions,
+                        toolbarExpanded = toolbarExpanded,
+                        onToolbarToggle = { toolbarExpanded = !toolbarExpanded },
+                        uiState = uiState,
+                        viewModel = viewModel,
+                        serviceActions = serviceActions,
+                        onSuggestionCommitted = viewModel::onSuggestionCommitted
+                    )
 
-                when (uiState.mode) {
-                    InputMode.EMOJI -> {
-                        val recent = viewModel.recentEmoji.collectAsStateWithLifecycle().value
-                        // The panel's own category and query state live here,
-                        // not in the ViewModel: they are ephemeral UI state
-                        // scoped to one visit to the panel, and putting them in
-                        // the shared state object would mean the settings
-                        // sandbox and the live keyboard fight over them.
-                        var query by remember { mutableStateOf("") }
-                        var category by remember { mutableStateOf(EmojiCatalog.CATEGORIES.first().id) }
+                    when (uiState.mode) {
+                        InputMode.EMOJI -> {
+                            val recent = viewModel.recentEmoji.collectAsStateWithLifecycle().value
+                            // The panel's own category and query state live here,
+                            // not in the ViewModel: they are ephemeral UI state
+                            // scoped to one visit to the panel, and putting them in
+                            // the shared state object would mean the settings
+                            // sandbox and the live keyboard fight over them.
+                            var query by remember { mutableStateOf("") }
+                            var category by remember { mutableStateOf(EmojiCatalog.CATEGORIES.first().id) }
 
-                        LaunchedEffect(uiState.mode) {
-                            // A fresh visit starts from the user's own recents
-                            // if there are any, because "what I used last" is
-                            // the best predictor of what I want now.
-                            query = ""
-                            if (recent.isNotEmpty()) category = RECENT_CATEGORY_ID
+                            LaunchedEffect(uiState.mode) {
+                                // A fresh visit starts from the user's own recents
+                                // if there are any, because "what I used last" is
+                                // the best predictor of what I want now.
+                                query = ""
+                                if (recent.isNotEmpty()) category = RECENT_CATEGORY_ID
+                            }
+
+                            EmojiPanel(
+                                recentEmoji = recent,
+                                categories = EmojiCatalog.CATEGORIES.map { it.id },
+                                activeCategory = category,
+                                query = query,
+                                onCategorySelected = { category = it },
+                                onQueryChanged = { query = it },
+                                onEmojiSelected = viewModel::onEmojiUsed,
+                                onClose = { viewModel.switchMode(uiState.lastKeyMode) },
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            PanelActionBar(
+                                uiState = uiState,
+                                viewModel = viewModel,
+                                onPreviewChange = onPreviewChange
+                            )
                         }
 
-                        EmojiPanel(
-                            recentEmoji = recent,
-                            categories = EmojiCatalog.CATEGORIES.map { it.id },
-                            activeCategory = category,
-                            query = query,
-                            onCategorySelected = { category = it },
-                            onQueryChanged = { query = it },
-                            onEmojiSelected = viewModel::onEmojiUsed,
-                            onClose = { viewModel.switchMode(uiState.lastKeyMode) },
-                            modifier = Modifier.weight(1f)
-                        )
+                        InputMode.CLIPBOARD -> {
+                            val clipboard = viewModel.clipboard.collectAsStateWithLifecycle().value
+                            ClipboardPanel(
+                                items = clipboard,
+                                onPaste = viewModel::onClipboardItemPasted,
+                                onPin = viewModel::onClipboardItemPinned,
+                                onDelete = viewModel::onClipboardItemDeleted,
+                                onClearAll = viewModel::onClipboardCleared,
+                                onClose = { viewModel.switchMode(uiState.lastKeyMode) },
+                                modifier = Modifier.weight(1f)
+                            )
 
-                        PanelActionBar(
-                            uiState = uiState,
-                            viewModel = viewModel
-                        )
+                            PanelActionBar(
+                                uiState = uiState,
+                                viewModel = viewModel,
+                                onPreviewChange = onPreviewChange
+                            )
+                        }
+
+                        else -> {
+                            KeyGrid(
+                                uiState = uiState,
+                                viewModel = viewModel,
+                                serviceActions = serviceActions,
+                                onPreviewChange = onPreviewChange,
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
+                }
 
-                    InputMode.CLIPBOARD -> {
-                        val clipboard = viewModel.clipboard.collectAsStateWithLifecycle().value
-                        ClipboardPanel(
-                            items = clipboard,
-                            onPaste = viewModel::onClipboardItemPasted,
-                            onPin = viewModel::onClipboardItemPinned,
-                            onDelete = viewModel::onClipboardItemDeleted,
-                            onClearAll = viewModel::onClipboardCleared,
-                            onClose = { viewModel.switchMode(uiState.lastKeyMode) },
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        PanelActionBar(
-                            uiState = uiState,
-                            viewModel = viewModel
-                        )
-                    }
-
-                    else -> {
-                        KeyGrid(
-                            uiState = uiState,
-                            viewModel = viewModel,
-                            serviceActions = serviceActions,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
+                if (uiState.oneHanded == OneHandedSide.LEFT) {
+                    // Docked left: space on the right.
+                    Spacer(modifier = Modifier.weight(ONE_HANDED_EMPTY_WEIGHT))
                 }
             }
 
-            if (uiState.oneHanded == OneHandedSide.LEFT) {
-                // Docked left: space on the right.
-                Spacer(modifier = Modifier.weight(ONE_HANDED_EMPTY_WEIGHT))
+            // Drawn last so the pressed-key preview floats above the strip.
+            previewState?.let { (_, preview) ->
+                KeyPreviewPopup(preview = preview)
             }
         }
     }
@@ -332,7 +364,8 @@ private fun KeyGrid(
     uiState: KeyboardUiState,
     viewModel: KeyboardViewModel,
     serviceActions: ServiceActions,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onPreviewChange: ((Any, KeyPreview?) -> Unit)? = null
 ) {
     val gaps = KeyGaps()
     val rows = KeyboardLayouts.rowsFor(
@@ -360,6 +393,7 @@ private fun KeyGrid(
                 } else {
                     null
                 },
+                onPreviewChange = onPreviewChange,
                 leading = {
                     if (isLastRow) {
                         if (onSymbolsLayer) {
@@ -367,14 +401,18 @@ private fun KeyGrid(
                                 uiState = uiState,
                                 showBorder = uiState.showKeyBorders,
                                 gaps = gaps,
-                                viewModel = viewModel
+                                viewModel = viewModel,
+                                previewKey = "glyph-row",
+                                onPreviewChange = onPreviewChange
                             )
                         } else {
                             ShiftKey(
                                 shift = uiState.shift,
                                 showBorder = uiState.showKeyBorders,
                                 gaps = gaps,
-                                viewModel = viewModel
+                                viewModel = viewModel,
+                                previewKey = "shift",
+                                onPreviewChange = onPreviewChange
                             )
                         }
                     }
@@ -384,7 +422,9 @@ private fun KeyGrid(
                         BackspaceKey(
                             showBorder = uiState.showKeyBorders,
                             gaps = gaps,
-                            viewModel = viewModel
+                            viewModel = viewModel,
+                            previewKey = "backspace",
+                            onPreviewChange = onPreviewChange
                         )
                     }
                 },
@@ -397,7 +437,8 @@ private fun KeyGrid(
             viewModel = viewModel,
             serviceActions = serviceActions,
             pointsPerCluster = with(LocalDensity.current) { SPACE_DRAG_DP_PER_CLUSTER.dp.toPx() },
-            gaps = gaps
+            gaps = gaps,
+            onPreviewChange = onPreviewChange
         )
     }
 }
@@ -440,7 +481,8 @@ private fun SpaceRow(
     viewModel: KeyboardViewModel,
     serviceActions: ServiceActions,
     pointsPerCluster: Float,
-    gaps: KeyGaps
+    gaps: KeyGaps,
+    onPreviewChange: ((Any, KeyPreview?) -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -454,7 +496,9 @@ private fun SpaceRow(
             uiState = uiState,
             showBorder = uiState.showKeyBorders,
             gaps = gaps,
-            viewModel = viewModel
+            viewModel = viewModel,
+            previewKey = "glyph-bottom",
+            onPreviewChange = onPreviewChange
         )
 
         // The mode switcher.
@@ -462,7 +506,9 @@ private fun SpaceRow(
             uiState = uiState,
             showBorder = uiState.showKeyBorders,
             gaps = gaps,
-            viewModel = viewModel
+            viewModel = viewModel,
+            previewKey = "mode",
+            onPreviewChange = onPreviewChange
         )
 
         // The spacebar.
@@ -482,7 +528,9 @@ private fun SpaceRow(
             weight = 1.2f,
             showBorder = uiState.showKeyBorders,
             gaps = gaps,
-            onPress = { serviceActions.switchToNextInputMethod() }
+            onPress = { serviceActions.switchToNextInputMethod() },
+            previewKey = "globe",
+            onPreviewChange = onPreviewChange
         )
 
         // Enter.
@@ -490,7 +538,9 @@ private fun SpaceRow(
             uiState = uiState,
             showBorder = uiState.showKeyBorders,
             gaps = gaps,
-            viewModel = viewModel
+            viewModel = viewModel,
+            previewKey = "enter",
+            onPreviewChange = onPreviewChange
         )
     }
 }
@@ -520,7 +570,9 @@ private fun RowScope.RowScopeModifierKey(
     weight: Float,
     showBorder: Boolean,
     gaps: KeyGaps,
-    onPress: () -> Unit
+    onPress: () -> Unit,
+    previewKey: Any? = null,
+    onPreviewChange: ((Any, KeyPreview?) -> Unit)? = null
 ) {
     ModifierKey(
         label = "",
@@ -529,7 +581,9 @@ private fun RowScope.RowScopeModifierKey(
         gaps = gaps,
         icon = icon,
         contentDescription = contentDescription,
-        onPress = onPress
+        onPress = onPress,
+        previewKey = previewKey,
+        onPreviewChange = onPreviewChange
     )
 }
 
@@ -650,7 +704,9 @@ private fun RowScope.ShiftKey(
     shift: ShiftState,
     showBorder: Boolean,
     gaps: KeyGaps,
-    viewModel: KeyboardViewModel
+    viewModel: KeyboardViewModel,
+    previewKey: Any? = null,
+    onPreviewChange: ((Any, KeyPreview?) -> Unit)? = null
 ) {
     val colors = KeyboardTheme.colors
     val haptics = LocalHapticFeedback.current
@@ -673,7 +729,9 @@ private fun RowScope.ShiftKey(
         onPress = {
             haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
             viewModel.onShiftPressed()
-        }
+        },
+        previewKey = previewKey,
+        onPreviewChange = onPreviewChange
     )
 }
 
@@ -689,7 +747,9 @@ private fun RowScope.GlyphToggleKey(
     uiState: KeyboardUiState,
     showBorder: Boolean,
     gaps: KeyGaps,
-    viewModel: KeyboardViewModel
+    viewModel: KeyboardViewModel,
+    previewKey: Any? = null,
+    onPreviewChange: ((Any, KeyPreview?) -> Unit)? = null
 ) {
     val label = when {
         uiState.moreSymbolsLayer -> stringResource(R.string.key_letters)
@@ -703,7 +763,9 @@ private fun RowScope.GlyphToggleKey(
         gaps = gaps,
         contentDescription = label,
         style = KeyboardTypography.ModifierKey,
-        onPress = viewModel::onGlyphTogglePressed
+        onPress = viewModel::onGlyphTogglePressed,
+        previewKey = previewKey,
+        onPreviewChange = onPreviewChange
     )
 }
 
@@ -723,7 +785,9 @@ private fun RowScope.GlyphToggleKey(
 private fun RowScope.BackspaceKey(
     showBorder: Boolean,
     gaps: KeyGaps,
-    viewModel: KeyboardViewModel
+    viewModel: KeyboardViewModel,
+    previewKey: Any? = null,
+    onPreviewChange: ((Any, KeyPreview?) -> Unit)? = null
 ) {
     var wordDeleted by remember { mutableStateOf(false) }
 
@@ -745,7 +809,9 @@ private fun RowScope.BackspaceKey(
             }
             true
         },
-        onDragEnd = { wordDeleted = false }
+        onDragEnd = { wordDeleted = false },
+        previewKey = previewKey,
+        onPreviewChange = onPreviewChange
     )
 }
 
@@ -770,7 +836,9 @@ private fun RowScope.EnterKey(
     uiState: KeyboardUiState,
     showBorder: Boolean,
     gaps: KeyGaps,
-    viewModel: KeyboardViewModel
+    viewModel: KeyboardViewModel,
+    previewKey: Any? = null,
+    onPreviewChange: ((Any, KeyPreview?) -> Unit)? = null
 ) {
     val colors = KeyboardTheme.colors
 
@@ -795,7 +863,9 @@ private fun RowScope.EnterKey(
         pressedBackground = colors.accentBackgroundPressed,
         contentColor = colors.keyTextOnAccent,
         style = KeyboardTypography.SymbolKey,
-        onPress = { viewModel.onKeyPressed(KeyboardKey.Enter) }
+        onPress = { viewModel.onKeyPressed(KeyboardKey.Enter) },
+        previewKey = previewKey,
+        onPreviewChange = onPreviewChange
     )
 }
 
@@ -821,7 +891,9 @@ private fun RowScope.ModeSwitcherKey(
     uiState: KeyboardUiState,
     showBorder: Boolean,
     gaps: KeyGaps,
-    viewModel: KeyboardViewModel
+    viewModel: KeyboardViewModel,
+    previewKey: Any? = null,
+    onPreviewChange: ((Any, KeyPreview?) -> Unit)? = null
 ) {
     val haptics = LocalHapticFeedback.current
 
@@ -861,7 +933,9 @@ private fun RowScope.ModeSwitcherKey(
             // width for the spacebar.
             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
             viewModel.requestSystemPicker()
-        }
+        },
+        previewKey = previewKey,
+        onPreviewChange = onPreviewChange
     )
 }
 
@@ -891,7 +965,8 @@ private fun nextKeyMode(current: InputMode): InputMode = when (current) {
 @Composable
 private fun PanelActionBar(
     uiState: KeyboardUiState,
-    viewModel: KeyboardViewModel
+    viewModel: KeyboardViewModel,
+    onPreviewChange: ((Any, KeyPreview?) -> Unit)? = null
 ) {
     val gaps = KeyGaps()
 
@@ -909,7 +984,9 @@ private fun PanelActionBar(
             gaps = gaps,
             contentDescription = stringResource(R.string.cd_back_to_keyboard),
             style = KeyboardTypography.ModifierKey,
-            onPress = { viewModel.switchMode(uiState.lastKeyMode) }
+            onPress = { viewModel.switchMode(uiState.lastKeyMode) },
+            previewKey = "abc",
+            onPreviewChange = onPreviewChange
         )
 
         Spacer(modifier = Modifier.weight(1f))
@@ -917,7 +994,9 @@ private fun PanelActionBar(
         BackspaceKey(
             showBorder = uiState.showKeyBorders,
             gaps = gaps,
-            viewModel = viewModel
+            viewModel = viewModel,
+            previewKey = "backspace",
+            onPreviewChange = onPreviewChange
         )
     }
 }
