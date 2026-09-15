@@ -1,0 +1,95 @@
+name: Build release APK
+
+# Runs on every push to main, on every pull request, and on demand. There is no
+# separate "release" trigger: `assembleRelease` is the only build this project
+# needs to be proven green, and the demo keystore is committed precisely so that
+# this workflow never depends on a repository secret.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release:
+    name: assembleRelease
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # setup-gradle wires dependency caching and the Gradle build cache; it also
+      # validates gradle/wrapper/gradle-wrapper.properties against the committed
+      # gradle-wrapper.jar, so a tampered wrapper fails the build.
+      - name: Set up Gradle with build caching
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: false
+
+      # The only executable check in the repository: it parses the transliteration
+      # tables out of the Kotlin source and asserts the literal layer plus the
+      # exact-dictionary-key rule that the space bar commits.
+      - name: Validate the transliteration tables and the lexicon asset
+        run: python3 tools/verify_transliteration.py --coverage
+
+      - name: Assemble the universal release APK
+        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        env:
+          GRADLE_OPTS: >-
+            -Xmx3g -Dorg.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8
+            -Dorg.gradle.parallel=true -Dorg.gradle.caching=true
+
+      - name: Rename the artifact to nepali-keyboard-<short-sha>.apk
+        id: apk
+        run: |
+          set -euo pipefail
+          SHORT_SHA="${GITHUB_SHA::7}"
+          mapfile -t APKS < <(ls app/build/outputs/apk/release/*.apk 2>/dev/null || true)
+          if [ "${#APKS[@]}" -ne 1 ]; then
+            echo "Expected exactly one universal release APK, found ${#APKS[@]}" >&2
+            exit 1
+          fi
+          NAME="nepali-keyboard-${SHORT_SHA}.apk"
+          mkdir -p dist
+          cp "${APKS[0]}" "dist/${NAME}"
+          echo "name=${NAME}" >> "$GITHUB_OUTPUT"
+          echo "path=dist/${NAME}" >> "$GITHUB_OUTPUT"
+          ls -l dist
+
+      - name: Verify the APK signature
+        run: |
+          set -euo pipefail
+          APKSIGNER="$(ls "${ANDROID_HOME}"/build-tools/*/apksigner | sort -V | tail -n 1)"
+          "${APKSIGNER}" verify --verbose "${APK_PATH}"
+          "${APKSIGNER}" verify --print-certs "${APK_PATH}"
+        env:
+          APK_PATH: ${{ steps.apk.outputs.path }}
+
+      - name: Print the SHA-256 of the artifact
+        run: sha256sum "${{ steps.apk.outputs.path }}"
+
+      - name: Upload the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.apk.outputs.name }}
+          path: ${{ steps.apk.outputs.path }}
+          if-no-files-found: error
+          retention-days: 30
+          compression-level: 0

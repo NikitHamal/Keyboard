@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Adaptive launcher icon foreground: a keyboard deck under a Devanagari
+     shirorekha (headline) bar. Pure rectangles, no arcs, so every
+     VectorDrawable rasteriser renders it identically. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Headline (shirorekha) -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M24,27 L84,27 L84,33 L24,33 Z" />
+
+    <!-- Keyboard deck -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillAlpha="0.33"
+        android:pathData="M19,41 L89,41 L89,81 L19,81 Z" />
+
+    <!-- Row 1 -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M23,45 L33,45 L33,51 L23,51 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M37,45 L47,45 L47,51 L37,51 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M51,45 L61,45 L61,51 L51,51 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M65,45 L75,45 L75,51 L65,51 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M79,45 L85,45 L85,51 L79,51 Z" />
+
+    <!-- Row 2 -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M23,55 L33,55 L33,61 L23,61 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M37,55 L47,55 L47,61 L37,61 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M51,55 L61,55 L61,61 L51,61 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M65,55 L75,55 L75,61 L65,61 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M79,55 L85,55 L85,61 L79,61 Z" />
+
+    <!-- Row 3: space bar + two function keys -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M23,65 L35,65 L35,71 L23,71 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M39,65 L69,65 L69,71 L39,71 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M73,65 L85,65 L85,71 L73,71 Z" />
+
+    <!-- Accent dot: the Devanagari anusvara -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M50,73 L58,73 L58,79 L50,79 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M51,75 L57,75 L57,77 L51,77 Z" />
+</vector>

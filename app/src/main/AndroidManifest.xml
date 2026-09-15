@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+      ZERO PERMISSIONS BY DESIGN.
+      This keyboard declares no network permission, no telemetry, no INTERNET,
+      no ACCESS_NETWORK_STATE and no clipboard or vibration permission.
+      - Haptics use View.performHapticFeedback (no VIBRATE permission).
+      - Clipboard history reads the system clipboard, which is allowed for the
+        currently focused input method without any permission.
+      - Everything (transliteration, lexicon, ranking) runs on-device.
+    -->
+
+    <application
+        android:name=".NepaliKeyboardApp"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.NepaliKeyboard"
+        tools:targetApi="34">
+
+        <!-- ===================== Input Method Service ===================== -->
+        <service
+            android:name=".ime.NepaliImeService"
+            android:exported="true"
+            android:label="@string/ime_service_label"
+            android:permission="android.permission.BIND_INPUT_METHOD"
+            tools:ignore="ExportedService">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.view.im"
+                android:resource="@xml/ime_method" />
+        </service>
+
+        <!-- ===================== Settings / Onboarding ==================== -->
+        <activity
+            android:name=".settings.SettingsActivity"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode|smallestScreenSize|density"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.NepaliKeyboard"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Allows the system IME picker to deep-link into our settings. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="nepalikeyboard" android:host="settings" />
+            </intent-filter>
+        </activity>
+
+    </application>
+
+</manifest>

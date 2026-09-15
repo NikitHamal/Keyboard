@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Backups are disabled in the manifest: learned words and clipboard history
+     never leave the device, not even through Android's backup transport. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="." />
+    <exclude domain="file" path="datastore" />
+    <exclude domain="database" path="." />
+</full-backup-content>
