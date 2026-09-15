@@ -83,8 +83,15 @@ data class KeyboardPreferences(
     /** Draw a hairline border around each key. */
     val showKeyBorders: Boolean = false,
 
-    /** Material You dynamic colour, where the platform supports it. */
-    val dynamicColor: Boolean = true,
+    /**
+     * Material You dynamic colour, where the platform supports it.
+     *
+     * Off by default: a wallpaper-derived palette recolours the settings
+     * chrome away from the keyboard's crimson identity (and on some devices
+     * reads as an unrelated blue theme), while the key geometry intentionally
+     * never follows it. Users who prefer wallpaper tinting can opt in.
+     */
+    val dynamicColor: Boolean = false,
 
     /** Theme selection. */
     val themeMode: ThemeMode = ThemeMode.SYSTEM,

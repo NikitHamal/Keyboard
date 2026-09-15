@@ -167,22 +167,25 @@ jobs:
       # The Gradle output is always `app-release.apk`. Two builds from different
       # commits would therefore produce artifacts indistinguishable by name,
       # which is exactly the situation a "which APK is this?" bug report is made
-      # of. The short SHA fixes that.
+      # of. The version plus the short SHA fixes that, matching the
+      # `name-v{version}-{hash}` convention used by sibling projects.
       #
       # `git rev-parse --short HEAD` rather than a substring of `github.sha`:
       # the two agree in practice, but the git command is the definition of the
       # short SHA and stays correct if the checkout depth or the GitHub payload
       # ever changes.
       # -----------------------------------------------------------------------
-      - name: Rename APK with the short commit SHA
+      - name: Rename APK with version and short commit SHA
         id: rename
         run: |
           set -euo pipefail
           SHORT_SHA="$(git rev-parse --short HEAD)"
+          VERSION="$(grep 'versionName' app/build.gradle.kts | head -1 | sed 's/.*versionName\s*=\s*"\(.*\)"/\1/')"
           echo "short_sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           mkdir -p dist
           cp app/build/outputs/apk/release/app-release.apk \
-             "dist/nepali-keyboard-${SHORT_SHA}.apk"
+             "dist/nepali-keyboard-v${VERSION}-${SHORT_SHA}.apk"
           ls -l dist
 
       # -----------------------------------------------------------------------
@@ -208,7 +211,7 @@ jobs:
       - name: Verify the APK
         run: |
           set -euo pipefail
-          APK="dist/nepali-keyboard-${{ steps.rename.outputs.short_sha }}.apk"
+          APK="dist/nepali-keyboard-v${{ steps.rename.outputs.version }}-${{ steps.rename.outputs.short_sha }}.apk"
 
           if [ ! -f "$APK" ]; then
             echo "::error::Expected APK not found at $APK"
@@ -237,10 +240,11 @@ jobs:
       # -----------------------------------------------------------------------
       # Publish
       #
-      # One artifact, containing one APK. `if-no-files-found: error` turns "the
-      # build produced nothing" into a failed step rather than a silent success
-      # with an empty download — which is the single most common way a CI
-      # pipeline ends up lying about what it did.
+      # One artifact, containing one APK, named like the file it holds:
+      # `nepali-keyboard-v{version}-{short_sha}`. `if-no-files-found: error`
+      # turns "the build produced nothing" into a failed step rather than a
+      # silent success with an empty download — which is the single most
+      # common way a CI pipeline ends up lying about what it did.
       #
       # `retention-days: 30` keeps the artifact store bounded. These are demo
       # builds of a public demo key; the useful life of the artifact is the
@@ -249,7 +253,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: nepali-keyboard-release
+          name: nepali-keyboard-v${{ steps.rename.outputs.version }}-${{ steps.rename.outputs.short_sha }}
           path: dist/*.apk
           if-no-files-found: error
           retention-days: 30

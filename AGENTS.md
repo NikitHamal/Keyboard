@@ -546,7 +546,8 @@ build passing tells you nothing about whether the release APK runs.
 5. `actions/setup-java@v4` — Temurin 21
 6. `gradle/actions/setup-gradle@v4` — `validate-wrappers: true`
 7. `./gradlew assembleRelease --no-daemon --stacktrace`
-8. Rename to `nepali-keyboard-<SHORT_SHA>.apk` (`git rev-parse --short HEAD`)
+8. Rename to `nepali-keyboard-v<VERSION>-<SHORT_SHA>.apk` (`versionName` from
+   `app/build.gradle.kts`, `git rev-parse --short HEAD`)
 9. Verify the APK
 10. `actions/upload-artifact@v4` — `if-no-files-found: error`
 
@@ -569,11 +570,12 @@ stale daemon was started with.
 The checkout is fresh. `clean` on a cold cache only invalidates the
 configuration cache for no benefit.
 
-### Why the artifact name uses the short SHA
+### Why the artifact name uses version and short SHA
 
 The Gradle output is always `app-release.apk`. Two builds from different commits
 would be indistinguishable by name — which is the situation a "which APK is
-this?" bug report is made of.
+this?" bug report is made of. The `name-v{version}-{hash}` shape matches the
+convention used by sibling projects.
 
 ### What the verification step asserts
 
@@ -591,8 +593,8 @@ check would be redundant.
 
 ### Artifact
 
-One artifact named `nepali-keyboard-release`, containing one APK,
-`nepali-keyboard-<SHORT_SHA>.apk`. Retention 30 days. `if-no-files-found: error`
+One artifact named `nepali-keyboard-v<VERSION>-<SHORT_SHA>`, containing one APK,
+`nepali-keyboard-v<VERSION>-<SHORT_SHA>.apk`. Retention 30 days. `if-no-files-found: error`
 turns "the build produced nothing" into a failed step rather than a silent
 success with an empty download.
 

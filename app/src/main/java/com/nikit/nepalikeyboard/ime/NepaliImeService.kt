@@ -15,6 +15,7 @@ import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Recomposer
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.setViewTreeLifecycleOwner
@@ -27,6 +28,7 @@ import com.nikit.nepalikeyboard.settings.SettingsActivity
 import com.nikit.nepalikeyboard.ui.KeyboardHost
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -142,12 +144,25 @@ class NepaliImeService : InputMethodService() {
     /**
      * The input view returned from the most recent `onCreateInputView`, if any.
      *
-     * Retained so the window-root tagging (see `installDecorOwners`) can reach
-     * the root view without touching the service window APIs, which are not
-     * part of the public SDK. Cleared in `onDestroy` so a dead view is never
-     * referenced; rotation recreates the service (and the view) wholesale.
+     * Retained so `onDestroy` can dispose its composition explicitly. Cleared
+     * in `onDestroy` so a dead view is never referenced; rotation recreates
+     * the service (and the view) wholesale.
      */
     private var inputView: View? = null
+
+    /**
+     * The service-owned Compose `Recomposer` driving the keyboard composition.
+     *
+     * Created in [onCreate] and closed in [onDestroy]. Owning the recomposer
+     * is what makes the keyboard immune to the window it is hosted in: with
+     * an explicit parent composition context the framework never consults the
+     * window hierarchy, so a bare OEM dialog root without view-tree owners
+     * cannot crash composition startup. See `onCreateInputView`.
+     */
+    private var imeRecomposer: Recomposer? = null
+
+    /** The job running `Recomposer.runRecomposeAndApplyChanges`, if any. */
+    private var recomposerJob: Job? = null
 
     /**
      * The haptic service, resolved once. On API 31+ this must come from
@@ -173,14 +188,16 @@ class NepaliImeService : InputMethodService() {
     /**
      * Called once per service instance, before any view exists.
      *
-     * Does five things, in the order they must happen:
+     * Does six things, in the order they must happen:
      *   1. Resolve the vibrator, because a failure here should be discovered
      *      before the first keypress, not during it.
      *   2. Build and `create()` the lifecycle owner, so the ViewModelStore and
      *      saved-state registry exist before anything asks for them.
      *   3. Build the service scope.
      *   4. Construct the ViewModel against the owner.
-     *   5. Install clipboard capture.
+     *   5. Create the service-owned `Recomposer` and start its loop, so a
+     *      composition context exists before any view asks for one.
+     *   6. Install clipboard capture.
      *
      * Note what is *not* here: loading the lexicon. That was already kicked off
      * by `NepaliKeyboardApp.onCreate`, and starting it again here would be
@@ -196,6 +213,15 @@ class NepaliImeService : InputMethodService() {
         serviceScope = scope
 
         viewModel = KeyboardViewModel(application, keyboardLifecycle, input, scope)
+
+        // Own recomposer, started before any view exists. A `Recomposer` is a
+        // `CompositionContext`, so handing it to the input view makes the
+        // window hierarchy irrelevant to composition startup — which is the
+        // entire parentPanel crash class. Runs on the service scope so it dies
+        // with the service; closed explicitly in `onDestroy`.
+        val recomposer = Recomposer(scope.coroutineContext)
+        imeRecomposer = recomposer
+        recomposerJob = scope.launch { recomposer.runRecomposeAndApplyChanges() }
 
         // One-shot signals the ViewModel cannot act on itself. `requestHideSelf`
         // is a framework call that only the service may make, so it lives here
@@ -231,6 +257,7 @@ class NepaliImeService : InputMethodService() {
     override fun onCreateInputView(): View {
         val owner = keyboardLifecycle
         val vm = viewModel ?: error("ViewModel requested before service onCreate")
+        val recomposer = imeRecomposer ?: error("Recomposer requested before service onCreate")
 
         val view = ComposeView(this).apply {
             // The keyboard must not take focus from the editor. A ComposeView
@@ -264,26 +291,28 @@ class NepaliImeService : InputMethodService() {
             // Setting the tags here closes the gap. The in-composition effect
             // still runs afterwards and is still the authority for teardown;
             // this is belt-and-braces for the attach-time read.
-            //
-            // The window root is tagged as well (see installDecorOwners):
-            // the recomposer is window-scoped, so it is resolved against the
-            // root view. On several OEM builds the input view is hosted
-            // inside an AlertDialog whose root is android:id/parentPanel,
-            // and tagging only this ComposeView leaves that lookup with no
-            // owner and the same crash. Tagging the root covers that path.
             // -----------------------------------------------------------------
             setViewTreeLifecycleOwner(owner)
             setViewTreeViewModelStoreOwner(owner)
             setViewTreeSavedStateRegistryOwner(owner)
 
-            // Re-tag the root on attach, for the case where the window (and
-            // therefore the root) only exists after this view is attached.
-            addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
-                override fun onViewAttachedToWindow(v: View) {
-                    installDecorOwners()
-                }
-                override fun onViewDetachedFromWindow(v: View) = Unit
-            })
+            // -----------------------------------------------------------------
+            // Compose with our own Recomposer, never the window's.
+            //
+            // Tagging alone cannot fix the parentPanel crash: the failing
+            // lookup runs against the window *root* (an AlertDialog
+            // parentPanel with no owners on several OEM builds), and there is
+            // no hook that can tag that root before `setInputView` attaches
+            // our view to it — pre-attach `rootView` is the view itself, and
+            // an attach listener fires only after `onAttachedToWindow` has
+            // already thrown. So instead of racing the window, bypass it: an
+            // explicit parent composition context short-circuits
+            // `resolveParentCompositionContext` and `getWindowRecomposer` is
+            // never called. The owners tagged above still serve every
+            // `LocalLifecycleOwner` / `rememberSaveable` / `viewModel()`
+            // lookup inside the composition.
+            // -----------------------------------------------------------------
+            setParentCompositionContext(recomposer)
 
             setContent {
                 InstallKeyboardViewTreeOwners(owner) {
@@ -306,7 +335,6 @@ class NepaliImeService : InputMethodService() {
         Log.d(TAG, "Input view created")
 
         inputView = view
-        installDecorOwners()
         return view
     }
 
@@ -341,12 +369,6 @@ class NepaliImeService : InputMethodService() {
         // `onStartInput` and here, so re-bind rather than trusting the earlier
         // one. Composer state is preserved.
         input.rebind(currentInputConnection)
-
-        // The view is attached by the time the keyboard is shown, so the
-        // root is the real window root here even on builds where it was not
-        // yet available in onCreateInputView. Re-tag so the window-scoped
-        // recomposer lookup always resolves.
-        installDecorOwners()
 
         keyboardLifecycle.startAndResume()
         viewModel?.onInputViewShown()
@@ -499,8 +521,20 @@ class NepaliImeService : InputMethodService() {
     override fun onDestroy() {
         viewModel?.onServiceDestroying()
         uninstallClipboardCapture()
-        clearDecorOwners()
+        try {
+            inputView?.disposeComposition()
+        } catch (t: Throwable) {
+            Log.w(TAG, "Could not dispose input composition", t)
+        }
         inputView = null
+        try {
+            imeRecomposer?.close()
+        } catch (t: Throwable) {
+            Log.w(TAG, "Could not close recomposer", t)
+        }
+        imeRecomposer = null
+        recomposerJob?.cancel()
+        recomposerJob = null
         keyboardLifecycle.destroy()
         serviceScope?.cancel()
         serviceScope = null
@@ -509,72 +543,6 @@ class NepaliImeService : InputMethodService() {
         currentEditorInfo = null
         super.onDestroy()
         Log.d(TAG, "Service destroyed")
-    }
-
-    /**
-     * Tags the input view's root view with our three view-tree owners.
-     *
-     * The Compose recomposer is window-scoped: `getWindowRecomposer(view)`
-     * resolves against the root view, not against the ComposeView itself.
-     * Tagging only the ComposeView (as done in `onCreateInputView`) leaves
-     * that lookup empty on builds where the input view is hosted inside an
-     * AlertDialog parentPanel (observed on Itel A662LM, Android 12 Go):
-     *
-     *   ViewTreeLifecycleOwner not found from LinearLayout parentPanel
-     *
-     * Tagging the root covers that path because parentPanel walks up to the
-     * root and finds our owner there. Reached via `inputView.rootView` rather
-     * than the service window APIs, which are not public SDK: pre-attach the
-     * root is the view itself (a harmless re-tag), post-attach it is the
-     * window's root. Safe to call repeatedly; a no-op when there is no view.
-     */
-    private fun installDecorOwners() {
-        try {
-            val root = try {
-                inputView?.rootView
-            } catch (t: Throwable) {
-                null
-            } ?: return
-            tagViewTreeOwners(root)
-        } catch (t: Throwable) {
-            Log.w(TAG, "Could not tag window root", t)
-        }
-    }
-
-    /**
-     * Tags any view with the service lifecycle owner triple.
-     *
-     * Idempotent: re-tagging the same owner is harmless, which is what makes
-     * it safe to call from both `onCreateInputView` and the attach listener.
-     */
-    private fun tagViewTreeOwners(view: View) {
-        try {
-            view.setViewTreeLifecycleOwner(keyboardLifecycle)
-            view.setViewTreeViewModelStoreOwner(keyboardLifecycle)
-            view.setViewTreeSavedStateRegistryOwner(keyboardLifecycle)
-        } catch (t: Throwable) {
-            Log.w(TAG, "Could not tag view tree owners", t)
-        }
-    }
-
-    /**
-     * Clears the root tags so a destroyed service is never resolved through
-     * a recycled window. The per-ComposeView tags are cleared by
-     * `InstallKeyboardViewTreeOwners` on dispose; this covers the window half.
-     */
-    private fun clearDecorOwners() {
-        try {
-            val root = try {
-                inputView?.rootView
-            } catch (t: Throwable) {
-                null
-            } ?: return
-            root.setViewTreeLifecycleOwner(null)
-            root.setViewTreeViewModelStoreOwner(null)
-            root.setViewTreeSavedStateRegistryOwner(null)
-        } catch (t: Throwable) {
-            Log.w(TAG, "Could not clear window root owners", t)
-        }
     }
 
     // =========================================================================

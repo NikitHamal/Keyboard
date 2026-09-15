@@ -47,8 +47,9 @@
       IllegalStateException the instant the input view is attached.
 
       android:windowIsFloating=false is therefore load-bearing, not cosmetic.
-      It is what keeps the input view in the IME's own non-floating window,
-      whose root view we tag with our three view-tree owners.
+      It is what keeps the input view in the IME's own non-floating window.
+      Composition itself never consults that window: the service owns its
+      Recomposer and hands it to the input view explicitly.
     -->
     <style name="Theme.NepaliKeyboard.Ime" parent="Theme.NepaliKeyboard">
         <item name="android:windowBackground">@android:color/transparent</item>
