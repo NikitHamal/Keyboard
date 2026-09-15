@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
-import androidx.lifecycle.SavedStateHandleSupport
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
@@ -48,8 +47,11 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
  * This class is the fix: a small, hand-rolled triple-owner that we install on
  * the keyboard's Compose host. It is deliberately modelled on what
  * `ComponentActivity` does internally so that the behaviour users and
- * developers expect from `Lifecycle`, `SavedStateHandle` and `viewModel()`
+ * developers expect from `Lifecycle`, `rememberSaveable` and `viewModel()`
  * inside a Composable holds identically here.
+ *
+ * The one thing it does *not* replicate is `SavedStateHandle` injection; see
+ * [KeyboardLifecycleOwner.defaultCreationExtras] for the reasoning.
  *
  * =============================================================================
  * LIFECYCLE MAPPING
@@ -113,12 +115,26 @@ class KeyboardLifecycleOwner(
      * Default creation extras.
      *
      * `APPLICATION_KEY` is what lets `AndroidViewModel` subclasses resolve
-     * their `Application` constructor argument. The
-     * `SavedStateHandle`-related keys are installed later, lazily, by
-     * [KeyboardLifecycleOwner.factory] via `SavedStateHandleSupport`, exactly as
-     * `ComponentActivity` does — `SavedStateHandleSupport` needs the registry
-     * to have already been restored, so it cannot be wired at construction
-     * time.
+     * their `Application` constructor argument.
+     *
+     * `SavedStateHandle` is deliberately *not* wired up. Doing it the way
+     * `ComponentActivity` does needs `SavedStateHandleSupport`, an entry point
+     * that lives in `lifecycle-viewmodel-savedstate` but only becomes visible to
+     * the Kotlin compiler when that artifact is a *compile-time* dependency of
+     * this module. It is not: `lifecycle-viewmodel-compose` and
+     * `activity-compose` pull it in transitively at runtime, which is enough for
+     * the class to be on the APK's classpath but not enough to resolve the
+     * symbol at compile time. Keeping the dependency out is deliberate — this
+     * module never creates a `SavedStateHandle`, so the artifact would be dead
+     * weight and one more thing to keep in step with the lifecycle version.
+     *
+     * The practical consequence is that a ViewModel asking for
+     * `(Application, SavedStateHandle)` would not be constructible here. Ours
+     * are all `AndroidViewModel` subclasses that take only an `Application`, and
+     * the state that must survive a configuration change (composer buffer,
+     * suggestions, clipboard) lives in the ViewModel itself rather than in a
+     * saved handle — see the lifecycle mapping above for why that is sufficient
+     * for an IME.
      */
     private val defaultCreationExtras: CreationExtras = run {
         val extras = MutableCreationExtras()
@@ -253,22 +269,13 @@ class KeyboardLifecycleOwner(
         /**
          * Builds the `ViewModelProvider.Factory` for this owner.
          *
-         * `SavedStateHandleSupport.enableSavedStateHandles` must be called
-         * before any ViewModel that injects a `SavedStateHandle` is created: it
-         * installs the `SavedStateProvider` that snapshots the handle when the
-         * registry saves. `ComponentActivity` does this in
-         * `onCreate` via `initializeViewTreeOwners`; we do it lazily on first
-         * factory access, which is equivalent because our registry has already
-         * been restored by then.
-         *
-         * The returned factory is the standard Android one, so ViewModels with
-         * plain `Application` constructors and ViewModels with
-         * `(Application, SavedStateHandle)` constructors both resolve.
+         * A plain `AndroidViewModelFactory`, which resolves any `AndroidViewModel`
+         * subclass by its `Application` constructor — every ViewModel this
+         * module declares. See [defaultCreationExtras] for why no
+         * `SavedStateHandle` support is installed.
          */
-        fun factory(owner: KeyboardLifecycleOwner): ViewModelProvider.Factory {
-            SavedStateHandleSupport.enableSavedStateHandles(owner, owner.defaultViewModelCreationExtras)
-            return ViewModelProvider.AndroidViewModelFactory.getInstance(owner.application)
-        }
+        fun factory(owner: KeyboardLifecycleOwner): ViewModelProvider.Factory =
+            ViewModelProvider.AndroidViewModelFactory.getInstance(owner.application)
     }
 }
 
@@ -359,10 +366,7 @@ fun hasKeyboardViewTreeOwners(): Boolean {
  * Convenience factory for ViewModels that need nothing but an `Application`.
  *
  * The keyboard's ViewModels are all `AndroidViewModel` subclasses with an
- * `Application` parameter, so this covers every real call site. Keeping it here
- * rather than reaching for `AndroidViewModelFactory.getInstance(app)` means the
- * creation extras come from the [KeyboardLifecycleOwner] — which is what makes
- * `SavedStateHandle` work if a future ViewModel asks for one.
+ * `Application` parameter, so this covers every real call site.
  */
 fun keyboardViewModelFactory(owner: KeyboardLifecycleOwner): ViewModelProvider.Factory =
     ViewModelProvider.AndroidViewModelFactory.getInstance(owner.application)
