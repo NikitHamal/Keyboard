@@ -431,7 +431,7 @@ ALLOW |= set(
     tween fadeIn fadeOut slideInHorizontally slideOutHorizontally
     mutableIntStateOf showInputMethodPicker verticalScroll
     setParentCompositionContext disposeComposition close
-    focusRequester show requestFocus
+    focusRequester show requestFocus createLifecycleAwareWindowRecomposer
     """.split()
 )
 
