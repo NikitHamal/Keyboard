@@ -505,6 +505,9 @@ The target is 120 FPS. These are not suggestions.
   itself become a subscription.
 * **`staticCompositionLocalOf`** for values that never change within a
   composition (`KeyboardTheme.colors`), so reads do not subscribe.
+* Key press preview popups (`ui/KeyPreview.kt`) and key shadows follow
+  FlorisBoard's `ime/popup` design (Apache-2.0, © The FlorisBoard Contributors).
+  The implementation is original; the root `LICENSE` file covers the reuse.
 * **Read state as late as possible.** `Modifier.drawBehind { }` reading state is
   far cheaper than a composable reading it, because it invalidates draw rather
   than composition.
