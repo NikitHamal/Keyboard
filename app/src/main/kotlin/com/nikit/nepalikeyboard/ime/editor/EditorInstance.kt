@@ -37,6 +37,9 @@ import com.nikit.nepalikeyboard.ime.nlp.SuggestionCandidate
 import com.nikit.nepalikeyboard.ime.text.composing.Appender
 import com.nikit.nepalikeyboard.ime.text.composing.Composer
 import com.nikit.nepalikeyboard.ime.text.composing.NepaliRomanized
+import com.nikit.nepalikeyboard.nepali.lexicon.LexiconRepository
+import com.nikit.nepalikeyboard.nepali.lexicon.NepaliCoreLexicon
+import com.nikit.nepalikeyboard.nepali.translit.RomanizedEngine
 import com.nikit.nepalikeyboard.ime.text.key.KeyVariation
 import com.nikit.nepalikeyboard.keyboardManager
 import com.nikit.nepalikeyboard.lib.ext.ExtensionComponentName
@@ -381,6 +384,33 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     fun deleteBackwards(unit: OperationUnit): Boolean {
+        val isNepaliRomanized = determineComposer(subtypeManager.activeSubtype.composer).id == NepaliRomanized.id
+        if (isNepaliRomanized && unit == OperationUnit.CHARACTERS && !activeContent.selection.isSelectionMode) {
+            val content = activeContent
+            val textBefore = content.textBeforeSelection.toString()
+            val boundary = NepaliRomanized.wordStart(textBefore)
+            val currentWordLen = textBefore.length - boundary
+            if (currentWordLen > 0 && NepaliRomanized.currentRoman.isNotEmpty()) {
+                NepaliRomanized.onBackspace()
+                val newRoman = NepaliRomanized.currentRoman
+                val newDevanagari = if (newRoman.isNotEmpty()) {
+                    NepaliCoreLexicon.lookup(newRoman)
+                        ?: LexiconRepository.get().getExactMatch(newRoman)
+                        ?: RomanizedEngine.transliterate(newRoman, isComplete = false).devanagari
+                } else {
+                    ""
+                }
+                autoSpace.setInactive()
+                phantomSpace.setInactive()
+                val ic = currentInputConnection() ?: return false
+                ic.beginBatchEdit()
+                ic.setComposingRegion(boundary, content.selection.start)
+                ic.setComposingText(newDevanagari, 1)
+                ic.finishComposingText()
+                ic.endBatchEdit()
+                return true
+            }
+        }
         NepaliRomanized.onBackspace()
         val content = activeContent
         if (unit == OperationUnit.CHARACTERS) {

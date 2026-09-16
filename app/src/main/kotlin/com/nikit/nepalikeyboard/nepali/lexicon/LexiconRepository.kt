@@ -52,11 +52,11 @@ class LexiconRepository private constructor(
     /** Ranking engine; not thread-safe, confined to [computeDispatcher]. */
     private val ranker = CandidateRanker()
 
-    /** Serialised asset reader. Configured to be strict about unknown keys. */
+    /** Serialised asset reader. Configured to be tolerant and safe against schema drifts. */
     private val json = Json {
         ignoreUnknownKeys = true
-        isLenient = false
-        allowTrailingComma = false
+        isLenient = true
+        coerceInputValues = true
     }
 
     // ------------------------------------------------------------------
@@ -194,6 +194,7 @@ class LexiconRepository private constructor(
     fun getExactMatch(romanInput: String): String? {
         if (romanInput.isEmpty()) return null
         val lower = romanInput.lowercase()
+        NepaliCoreLexicon.lookup(lower)?.let { return it }
         exactMatches[lower]?.let { return it }
         return resolveStemWithSuffix(lower)
     }

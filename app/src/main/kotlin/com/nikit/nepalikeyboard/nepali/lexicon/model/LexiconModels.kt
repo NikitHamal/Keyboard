@@ -100,10 +100,15 @@ data class LexiconEntry(
  */
 @Serializable
 data class BigramEntry(
-    @SerialName("a") val first: String,
-    @SerialName("b") val second: String,
-    @SerialName("f") val frequency: Double
-)
+    @SerialName("first") val first: String = "",
+    @SerialName("second") val second: String = "",
+    @SerialName("a") val a: String = "",
+    @SerialName("b") val b: String = "",
+    @SerialName("f") val frequency: Double = 0.0
+) {
+    val actualFirst: String get() = first.ifEmpty { a }
+    val actualSecond: String get() = second.ifEmpty { b }
+}
 
 /**
  * A candidate surfaced to the suggestion strip.
