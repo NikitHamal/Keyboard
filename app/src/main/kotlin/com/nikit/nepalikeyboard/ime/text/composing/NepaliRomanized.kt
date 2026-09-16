@@ -19,41 +19,16 @@ package com.nikit.nepalikeyboard.ime.text.composing
 import com.nikit.nepalikeyboard.nepali.lexicon.LexiconRepository
 import com.nikit.nepalikeyboard.nepali.translit.RomanizedEngine
 import com.nikit.nepalikeyboard.nepali.translit.TransliterationRules
+import com.nikit.nepalikeyboard.nepali.unicode.Devanagari
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /**
- * Composer for the Nepali (Romanized) subtype: Latin keystrokes are
- * transliterated into Devanagari as the user types.
+ * Phonetic transliteration composer for Nepali (Romanized).
  *
- * Follows the same contract as [WithRules] (Telex) and the Hangul/Kana
- * composers: [getActions] receives the field text before the cursor plus the
- * new character and returns how many chars to replace plus the replacement.
- *
- * ### Statelessness
- *
- * The composer keeps no buffer. Every keystroke recomputes the whole current
- * word from scratch: the trailing Devanagari run is reverse-mapped to its
- * canonical Romanized form, the new letter is appended, and the result is
- * transliterated forward. Recomputing wholesale is what makes backspace,
- * cursor moves, and mid-word edits correct without any resync logic — there
- * is no state to go stale.
- *
- * The round trip relies on [reverseTransliterate] being a right inverse of
- * the forward engine for text the forward engine produced. It is built from
- * the same rule table, so in practice it is; any transient mismatch
- * self-heals on the next keystroke because the computation restarts from the
- * actual field text.
- *
- * ### Word boundaries
- *
- * Only the trailing run of Devanagari word characters (U+0900–U+097F) is
- * retransliterated; everything before it is passed through byte-identical.
- * Rewriting previously committed words would be a data-loss bug, so the head
- * is never touched.
- *
- * Non-letters (space, punctuation, digits) pass straight through, which ends
- * the transliteration run exactly where the word ends.
+ * Maintains the active Romanized input buffer directly during typing so that
+ * inherent vowels (such as 'a' in "nepal") are perfectly preserved without
+ * relying on lossy reverse-transliteration from Devanagari.
  */
 @Serializable
 @SerialName("nepali-romanized")
@@ -61,22 +36,49 @@ object NepaliRomanized : Composer {
     override val id = "nepali-romanized"
     override val label = "Nepali Romanized"
 
-    /**
-     * How many chars of field text the composer may look at.
-     *
-     * 32 covers the longest realistic Nepali word with room to spare, while
-     * keeping the per-keystroke reverse+forward scan trivially cheap.
-     */
     override val toRead = 32
 
+    private val composingBuffer = StringBuilder()
+
+    /** The exact Romanized string typed by the user for the active composing word. */
+    val currentRoman: String
+        @Synchronized get() = composingBuffer.toString()
+
+    @Synchronized
+    fun clearComposing() {
+        composingBuffer.setLength(0)
+    }
+
+    @Synchronized
+    fun onBackspace(): Boolean {
+        if (composingBuffer.isNotEmpty()) {
+            composingBuffer.deleteCharAt(composingBuffer.length - 1)
+            return true
+        }
+        return false
+    }
+
+    @Synchronized
     override fun getActions(precedingText: String, toInsert: String): Pair<Int, String> {
         if (toInsert.length != 1 || !isAsciiLetter(toInsert[0])) {
+            clearComposing()
             return 0 to toInsert
         }
+
         val boundary = wordStart(precedingText)
         val wordLen = precedingText.length - boundary
-        val roman = reverseTransliterate(precedingText.substring(boundary)) + toInsert
-        val newDevanagari = RomanizedEngine.transliterate(roman, isComplete = false).devanagari
+
+        // If editor has no previous word characters, restart composing buffer
+        if (wordLen == 0) {
+            composingBuffer.setLength(0)
+        }
+
+        composingBuffer.append(toInsert)
+        val roman = composingBuffer.toString()
+
+        // Check exact matches / chat aliases / compounding first (e.g. nepal -> नेपाल, xa -> छ, hunxa -> हुन्छ)
+        val exactMatch = LexiconRepository.get().getExactMatch(roman)
+        val newDevanagari = exactMatch ?: RomanizedEngine.transliterate(roman, isComplete = false).devanagari
         return wordLen to newDevanagari
     }
 
@@ -88,11 +90,21 @@ object NepaliRomanized : Composer {
      */
     fun finalizeWord(composingText: String): String {
         val boundary = wordStart(composingText)
-        if (boundary == composingText.length) return composingText
-        val roman = reverseTransliterate(composingText.substring(boundary))
-        if (roman.isEmpty()) return composingText
+        if (boundary == composingText.length) {
+            clearComposing()
+            return composingText
+        }
+        val roman = synchronized(this) {
+            if (composingBuffer.isNotEmpty()) composingBuffer.toString()
+            else reverseTransliterate(composingText.substring(boundary))
+        }
+        if (roman.isEmpty()) {
+            clearComposing()
+            return composingText
+        }
         val exactMatch = LexiconRepository.get().getExactMatch(roman)
         val resolved = exactMatch ?: RomanizedEngine.transliterate(roman, isComplete = true).devanagari
+        clearComposing()
         return composingText.substring(0, boundary) + resolved
     }
 
@@ -107,6 +119,12 @@ object NepaliRomanized : Composer {
         val out = StringBuilder(devanagari.length * 2)
         var i = 0
         while (i < devanagari.length) {
+            val c = devanagari[i]
+            // Never leak raw virama combining mark into Roman string
+            if (c == Devanagari.VIRAMA) {
+                i++
+                continue
+            }
             var matched: Pair<String, String>? = null
             for (entry in REVERSE_RULES) {
                 if (devanagari.startsWith(entry.first, i)) {
@@ -118,7 +136,9 @@ object NepaliRomanized : Composer {
                 out.append(matched.second)
                 i += matched.first.length
             } else {
-                out.append(devanagari[i])
+                if (isAsciiLetter(c) || c.isWhitespace() || c.isDigit()) {
+                    out.append(c)
+                }
                 i++
             }
         }
@@ -140,10 +160,6 @@ object NepaliRomanized : Composer {
     /**
      * The reversed rule table: Devanagari target → canonical Romanized source,
      * longest target first so the greedy scan prefers the longest match.
-     *
-     * First rule wins per target in [TransliterationRules.ALL_RULES] order,
-     * which prefers the primary (usually lowercase) spelling — the one the
-     * forward engine itself would consume.
      */
     private val REVERSE_RULES: List<Pair<String, String>> by lazy(LazyThreadSafetyMode.PUBLICATION) {
         val seen = HashSet<String>()

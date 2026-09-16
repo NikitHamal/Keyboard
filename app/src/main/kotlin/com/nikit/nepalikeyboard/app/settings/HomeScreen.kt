@@ -199,7 +199,7 @@ fun HomeScreen() = FlorisScreen {
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 6.dp),
             shape = RoundedCornerShape(16.dp),
-            onClick = { previewController.focus() }
+            onClick = { previewController?.focus() }
         ) {
             Column(modifier = Modifier.padding(14.dp)) {
                 Row(
