@@ -60,10 +60,19 @@ class SubtypeManager(context: Context) {
     init {
         prefs.localization.subtypes.asFlow().collectLatestIn(scope) { listRaw ->
             flogDebug { listRaw }
-            val list = if (listRaw.isNotBlank()) {
-                SubtypeJsonConfig.decodeFromString<List<Subtype>>(listRaw)
+            val decoded = if (listRaw.isNotBlank() && listRaw != "[]") {
+                try {
+                    SubtypeJsonConfig.decodeFromString<List<Subtype>>(listRaw)
+                } catch (e: Exception) {
+                    emptyList()
+                }
             } else {
                 emptyList()
+            }
+            val list = if (decoded.isNotEmpty()) {
+                decoded
+            } else {
+                Subtype.DEFAULT_LIST.also { persistNewSubtypeList(it) }
             }
             subtypes = list
             evaluateActiveSubtype(list)

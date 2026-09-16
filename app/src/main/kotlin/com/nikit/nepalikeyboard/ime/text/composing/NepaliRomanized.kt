@@ -16,6 +16,7 @@
 
 package com.nikit.nepalikeyboard.ime.text.composing
 
+import com.nikit.nepalikeyboard.nepali.lexicon.LexiconRepository
 import com.nikit.nepalikeyboard.nepali.translit.RomanizedEngine
 import com.nikit.nepalikeyboard.nepali.translit.TransliterationRules
 import kotlinx.serialization.SerialName
@@ -73,27 +74,26 @@ object NepaliRomanized : Composer {
             return 0 to toInsert
         }
         val boundary = wordStart(precedingText)
-        val head = precedingText.substring(0, boundary)
+        val wordLen = precedingText.length - boundary
         val roman = reverseTransliterate(precedingText.substring(boundary)) + toInsert
         val newDevanagari = RomanizedEngine.transliterate(roman, isComplete = false).devanagari
-        return precedingText.length to (head + newDevanagari)
+        return wordLen to newDevanagari
     }
 
     /**
      * Re-renders the trailing word of [composingText] as a finished word.
      *
-     * Called when the word is committed (space, enter, punctuation): unlike
-     * the mid-word form, a finished word has its final schwa resolved per
-     * [TransliterationRules.SCHWA_RETENTION_WORDS]. Returns the input
-     * unchanged when there is no Devanagari word to finish.
+     * Called when the word is committed (space, enter, punctuation): resolves
+     * exact lexicon matches first, then falls back to schwa-resolved transliteration.
      */
     fun finalizeWord(composingText: String): String {
         val boundary = wordStart(composingText)
         if (boundary == composingText.length) return composingText
         val roman = reverseTransliterate(composingText.substring(boundary))
         if (roman.isEmpty()) return composingText
-        return composingText.substring(0, boundary) +
-            RomanizedEngine.transliterate(roman, isComplete = true).devanagari
+        val exactMatch = LexiconRepository.get().getExactMatch(roman)
+        val resolved = exactMatch ?: RomanizedEngine.transliterate(roman, isComplete = true).devanagari
+        return composingText.substring(0, boundary) + resolved
     }
 
     /**

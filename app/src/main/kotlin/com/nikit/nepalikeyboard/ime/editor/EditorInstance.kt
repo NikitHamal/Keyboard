@@ -283,6 +283,17 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             phantomSpace.setActive(showComposingRegion = false, candidate = candidate)
             super.finalizeComposingText(text)
         } else {
+            val ic = currentInputConnection()
+            val trailingWordLen = if (content.currentWord.isValid && content.currentWord.end == content.selection.start) {
+                content.currentWord.length
+            } else {
+                val before = content.textBeforeSelection
+                val boundary = before.indexOfLast { it.isWhitespace() || it == '.' || it == ',' }
+                if (boundary == -1) before.length else before.length - 1 - boundary
+            }
+            if (trailingWordLen > 0 && ic != null) {
+                ic.deleteSurroundingText(trailingWordLen, 0)
+            }
             val isPhantomSpaceActive = phantomSpace.determine(text)
             phantomSpace.setActive(showComposingRegion = false, candidate = candidate)
             return if (isPhantomSpaceActive) {

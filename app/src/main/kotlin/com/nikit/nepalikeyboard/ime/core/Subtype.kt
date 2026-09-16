@@ -24,7 +24,7 @@ import com.nikit.nepalikeyboard.ime.keyboard.extCoreLayout
 import com.nikit.nepalikeyboard.ime.keyboard.extCorePopupMapping
 import com.nikit.nepalikeyboard.ime.keyboard.extCorePunctuationRule
 import com.nikit.nepalikeyboard.ime.nlp.latin.LatinLanguageProvider
-import com.nikit.nepalikeyboard.ime.nlp.han.HanShapeBasedLanguageProvider
+import com.nikit.nepalikeyboard.ime.nlp.nepali.NepaliLexiconProvider
 import com.nikit.nepalikeyboard.lib.FlorisLocale
 import com.nikit.nepalikeyboard.lib.ext.ExtensionComponentName
 import kotlinx.serialization.SerialName
@@ -61,15 +61,44 @@ data class Subtype(
          * Subtype to use when prefs do not contain any valid subtypes.
          */
         val DEFAULT = Subtype(
-            id = -1,
-            primaryLocale = FlorisLocale.from("en", "US"),
+            id = 1L,
+            primaryLocale = FlorisLocale.from("ne", "NP"),
             secondaryLocales = emptyList(),
-            nlpProviders = SubtypeNlpProviderMap(),
-            composer = extCoreComposer("appender"),
-            currencySet = extCoreCurrencySet("dollar"),
+            nlpProviders = SubtypeNlpProviderMap(suggestion = NepaliLexiconProvider.ProviderId),
+            composer = extCoreComposer("nepali-romanized"),
+            currencySet = extCoreCurrencySet("indian_rupee"),
             punctuationRule = extCorePunctuationRule("default"),
             popupMapping = extCorePopupMapping("en"),
             layoutMap = SubtypeLayoutMap(characters = extCoreLayout("qwerty")),
+        )
+
+        /**
+         * Default list of subtypes provisioned on fresh installation.
+         */
+        val DEFAULT_LIST = listOf(
+            DEFAULT,
+            Subtype(
+                id = 2L,
+                primaryLocale = FlorisLocale.from("ne", "NP"),
+                secondaryLocales = emptyList(),
+                nlpProviders = SubtypeNlpProviderMap(),
+                composer = extCoreComposer("appender"),
+                currencySet = extCoreCurrencySet("indian_rupee"),
+                punctuationRule = extCorePunctuationRule("default"),
+                popupMapping = extCorePopupMapping("ne"),
+                layoutMap = SubtypeLayoutMap(characters = extCoreLayout("nepali_devanagari")),
+            ),
+            Subtype(
+                id = 3L,
+                primaryLocale = FlorisLocale.from("en", "US"),
+                secondaryLocales = emptyList(),
+                nlpProviders = SubtypeNlpProviderMap(),
+                composer = extCoreComposer("appender"),
+                currencySet = extCoreCurrencySet("dollar"),
+                punctuationRule = extCorePunctuationRule("default"),
+                popupMapping = extCorePopupMapping("en"),
+                layoutMap = SubtypeLayoutMap(characters = extCoreLayout("qwerty")),
+            )
         )
     }
 

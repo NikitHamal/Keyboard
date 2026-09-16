@@ -61,6 +61,8 @@ class NepaliLexiconProvider(context: Context) : SuggestionProvider {
         // The repository is a shared singleton with no native bindings.
     }
 
+    override val forcesSuggestionOn: Boolean = true
+
     override suspend fun suggest(
         subtype: Subtype,
         content: EditorContent,
@@ -68,12 +70,21 @@ class NepaliLexiconProvider(context: Context) : SuggestionProvider {
         allowPossiblyOffensive: Boolean,
         isPrivateSession: Boolean,
     ): List<SuggestionCandidate> {
-        val composing = content.composingText
-        if (composing.isBlank()) return emptyList()
-        var i = composing.length
-        while (i > 0 && NepaliRomanized.isDevanagariWordChar(composing[i - 1])) i--
-        if (i == composing.length) return emptyList()
-        val roman = NepaliRomanized.reverseTransliterate(composing.substring(i))
+        val word = content.composingText.ifBlank {
+            content.currentWordText.ifBlank {
+                content.textBeforeSelection.takeLastWhile {
+                    NepaliRomanized.isDevanagariWordChar(it) || it in 'a'..'z' || it in 'A'..'Z'
+                }
+            }
+        }
+        if (word.isBlank()) return emptyList()
+        var i = word.length
+        while (i > 0 && NepaliRomanized.isDevanagariWordChar(word[i - 1])) i--
+        val roman = if (i == word.length) {
+            word.filter { it in 'a'..'z' || it in 'A'..'Z' }
+        } else {
+            NepaliRomanized.reverseTransliterate(word.substring(i))
+        }
         if (roman.isBlank()) return emptyList()
         repository.ensureLoaded(appContext)
         return repository.suggest(roman, limit = maxCandidateCount).mapIndexed { index, suggestion ->
