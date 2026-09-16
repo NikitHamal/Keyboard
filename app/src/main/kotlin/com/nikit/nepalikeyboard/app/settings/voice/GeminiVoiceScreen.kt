@@ -35,9 +35,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.OpenInNew
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Translate
-import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Mic
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.Button
@@ -96,7 +94,6 @@ fun GeminiVoiceScreen() = FlorisScreen {
     val scope = rememberCoroutineScope()
 
     var showApiKeyDialog by remember { mutableStateOf(false) }
-    var showModelDialog by remember { mutableStateOf(false) }
     var hasMicPermission by remember {
         mutableStateOf(GeminiLiveVoiceManager.hasRecordAudioPermission(context))
     }
@@ -109,7 +106,6 @@ fun GeminiVoiceScreen() = FlorisScreen {
 
     content {
         val apiKey by prefs.geminiVoice.apiKey.asFlow().collectAsState(initial = "")
-        val activeModel by prefs.geminiVoice.model.asFlow().collectAsState(initial = "gemini-3.5-transcribe-live")
 
         // -------------------------------------------------------------
         // Hero Card
@@ -240,15 +236,10 @@ fun GeminiVoiceScreen() = FlorisScreen {
         }
 
         // -------------------------------------------------------------
-        // Model & Live Options
+        // Voice Options (models are fixed: Transcribe uses the streaming STT
+        // model, Translate uses the streaming translation model — no selection)
         // -------------------------------------------------------------
-        PreferenceGroup(title = "Live Model Configuration") {
-            Preference(
-                icon = Icons.Default.Security,
-                title = "Active Model",
-                summary = activeModel,
-                onClick = { showModelDialog = true },
-            )
+        PreferenceGroup(title = "Voice Options") {
             ListPreference(
                 listPref = prefs.geminiVoice.mode,
                 title = "Default Voice Mode",
@@ -333,83 +324,6 @@ fun GeminiVoiceScreen() = FlorisScreen {
                         Text(if (isVisible) "Hide" else "Show", fontSize = 12.sp)
                     }
                 }
-            }
-        }
-    }
-
-    // -----------------------------------------------------------------
-    // Model Selection Dialog
-    // -----------------------------------------------------------------
-    if (showModelDialog) {
-        val modelPresets = listOf(
-            "gemini-3.5-transcribe-live" to "Gemini 3.5 Transcribe Live (Streaming STT — recommended)",
-            "gemini-3.5-live-translate-preview" to "Gemini 3.5 Live Translate (Speech-to-speech translation)",
-            "gemini-3.1-flash-live-preview" to "Gemini 3.1 Flash Live (General live, transcribe + translate via prompt)",
-            "gemini-2.5-flash-native-audio-preview-12-2025" to "Gemini 2.5 Flash Live (Fallback general live)",
-        )
-        var customModelInput by remember { mutableStateOf(prefs.geminiVoice.model.get()) }
-
-        JetPrefAlertDialog(
-            title = "Select Gemini Live Model",
-            confirmLabel = "Save",
-            dismissLabel = "Cancel",
-            onDismiss = { showModelDialog = false },
-            onConfirm = {
-                scope.launch {
-                    prefs.geminiVoice.model.set(customModelInput.trim())
-                }
-                showModelDialog = false
-            },
-        ) {
-            Column {
-                Text(
-                    text = "Choose a model preset or enter a custom model identifier:",
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-
-                for ((presetId, presetLabel) in modelPresets) {
-                    val isSelected = customModelInput == presetId
-                    Button(
-                        onClick = { customModelInput = presetId },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if (isSelected) CrimsonPrimary else MaterialTheme.colorScheme.surfaceVariant,
-                            contentColor = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                        ),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 3.dp),
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            if (isSelected) {
-                                Icon(
-                                    imageVector = Icons.Outlined.CheckCircle,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp),
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                            }
-                            Text(
-                                text = presetLabel,
-                                fontSize = 12.sp,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(10.dp))
-                OutlinedTextField(
-                    value = customModelInput,
-                    onValueChange = { customModelInput = it },
-                    label = { Text("Custom Model ID") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
             }
         }
     }
