@@ -8,12 +8,13 @@
     <!-- Permission needed to create notifications on devices running Android 13+ -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
-    <!-- INTERNET is declared ONLY for the in-app auto-updater. The keyboard
-         service itself never opens a socket: all transliteration, lexicon
-         lookup, and clipboard capture run entirely on-device. The network
-         permission is used exclusively by UpdateManager in the settings app
-         to check GitHub Releases for newer APK versions and to download them.
-         See settings -> About -> App updates for the full contract. -->
+    <!-- INTERNET is used by (1) the in-app auto-updater (UpdateManager checks
+          GitHub Releases and downloads APKs) and (2) the user-initiated Gemini
+          AI voice typing / live translation feature (GeminiLiveVoiceManager
+          streams mic PCM to the Google AI Studio Live WebSocket API using the
+          user's own key when they tap the microphone button). All other IME
+          work — transliteration, lexicon lookup, clipboard capture — runs
+          entirely on-device and never opens a socket. -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
     <!-- Required to prompt the user to install a downloaded update APK. -->

@@ -758,7 +758,12 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val model = string(
             key = "gemini_voice__model",
-            default = "gemini-2.0-flash-exp",
+            // Dedicated streaming STT model. Translate mode auto-upgrades to
+            // gemini-3.5-live-translate-preview at connect time (see
+            // GeminiLiveVoiceManager.resolveModel). The old gemini-2.0-flash-exp
+            // default was shut down 2026-06-01 and left users stuck on
+            // "Connecting..." — never default to it again.
+            default = "gemini-3.5-transcribe-live",
         )
         val mode = enum(
             key = "gemini_voice__mode",

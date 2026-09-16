@@ -109,7 +109,7 @@ fun GeminiVoiceScreen() = FlorisScreen {
 
     content {
         val apiKey by prefs.geminiVoice.apiKey.asFlow().collectAsState(initial = "")
-        val activeModel by prefs.geminiVoice.model.asFlow().collectAsState(initial = "gemini-2.0-flash-exp")
+        val activeModel by prefs.geminiVoice.model.asFlow().collectAsState(initial = "gemini-3.5-transcribe-live")
 
         // -------------------------------------------------------------
         // Hero Card
@@ -342,10 +342,10 @@ fun GeminiVoiceScreen() = FlorisScreen {
     // -----------------------------------------------------------------
     if (showModelDialog) {
         val modelPresets = listOf(
-            "gemini-3.5-transcribe-live" to "Gemini 3.5 Transcribe Live (Official Live STT)",
-            "gemini-3.5-live-translate" to "Gemini 3.5 Live Translate (Official Live Translation)",
-            "gemini-3.8-live" to "Gemini 3.8 Live (General Live Audio)",
-            "gemini-2.0-flash-exp" to "Gemini 2.0 Flash (Fast & Proven Live Bidi)",
+            "gemini-3.5-transcribe-live" to "Gemini 3.5 Transcribe Live (Streaming STT — recommended)",
+            "gemini-3.5-live-translate-preview" to "Gemini 3.5 Live Translate (Speech-to-speech translation)",
+            "gemini-3.1-flash-live-preview" to "Gemini 3.1 Flash Live (General live, transcribe + translate via prompt)",
+            "gemini-2.5-flash-native-audio-preview-12-2025" to "Gemini 2.5 Flash Live (Fallback general live)",
         )
         var customModelInput by remember { mutableStateOf(prefs.geminiVoice.model.get()) }
 
