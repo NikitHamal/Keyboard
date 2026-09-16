@@ -17,6 +17,7 @@
 package com.nikit.nepalikeyboard.ime.text.composing
 
 import com.nikit.nepalikeyboard.nepali.lexicon.LexiconRepository
+import com.nikit.nepalikeyboard.nepali.lexicon.NepaliCoreLexicon
 import com.nikit.nepalikeyboard.nepali.translit.RomanizedEngine
 import com.nikit.nepalikeyboard.nepali.translit.TransliterationRules
 import com.nikit.nepalikeyboard.nepali.unicode.Devanagari
@@ -77,7 +78,7 @@ object NepaliRomanized : Composer {
         val roman = composingBuffer.toString()
 
         // Check exact matches / chat aliases / compounding first (e.g. nepal -> नेपाल, xa -> छ, hunxa -> हुन्छ)
-        val exactMatch = LexiconRepository.get().getExactMatch(roman)
+        val exactMatch = NepaliCoreLexicon.lookup(roman) ?: LexiconRepository.get().getExactMatch(roman)
         val newDevanagari = exactMatch ?: RomanizedEngine.transliterate(roman, isComplete = false).devanagari
         return wordLen to newDevanagari
     }
@@ -102,7 +103,7 @@ object NepaliRomanized : Composer {
             clearComposing()
             return composingText
         }
-        val exactMatch = LexiconRepository.get().getExactMatch(roman)
+        val exactMatch = NepaliCoreLexicon.lookup(roman) ?: LexiconRepository.get().getExactMatch(roman)
         val resolved = exactMatch ?: RomanizedEngine.transliterate(roman, isComplete = true).devanagari
         clearComposing()
         return composingText.substring(0, boundary) + resolved
@@ -151,7 +152,7 @@ object NepaliRomanized : Composer {
     private fun isAsciiLetter(c: Char): Boolean = c in 'a'..'z' || c in 'A'..'Z'
 
     /** Index where the trailing Devanagari word run starts. */
-    private fun wordStart(text: String): Int {
+    fun wordStart(text: String): Int {
         var i = text.length
         while (i > 0 && isDevanagariWordChar(text[i - 1])) i--
         return i

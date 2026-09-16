@@ -602,7 +602,7 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         )
         val settingsLanguage = string(
             key = "other__settings_language",
-            default = "auto",
+            default = "en",
         )
         val showAppIcon = boolean(
             key = "other__show_app_icon",

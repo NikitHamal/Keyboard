@@ -81,8 +81,10 @@ class CandidateRanker {
         bigramIndex.clear()
         maxBigramFrequency = 1.0
         for (b in bigrams) {
-            if (b.first.isEmpty() && b.second.isEmpty()) continue
-            val list = bigramIndex.getOrPut(b.first) { ArrayList(4) }
+            val f = b.actualFirst
+            val s = b.actualSecond
+            if (f.isEmpty() && s.isEmpty()) continue
+            val list = bigramIndex.getOrPut(f) { ArrayList(4) }
             list.add(b)
             if (b.frequency > maxBigramFrequency) maxBigramFrequency = b.frequency
         }
@@ -251,7 +253,7 @@ class CandidateRanker {
         var best = -1.0
         for (i in list.indices) {
             val b = list[i]
-            if (b.second == second) {
+            if (b.actualSecond == second) {
                 if (b.frequency > best) best = b.frequency
             }
         }
@@ -374,7 +376,7 @@ class CandidateRanker {
          * as the second strip entry.
          */
         fun transliterationFor(romanInput: String): String =
-            RomanizedEngine.toDevanagari(romanInput, isComplete = true)
+            NepaliCoreLexicon.lookup(romanInput) ?: RomanizedEngine.toDevanagari(romanInput, isComplete = true)
 
         /** True when [word] is a plausible word to learn. */
         fun isLearnable(word: String): Boolean =
