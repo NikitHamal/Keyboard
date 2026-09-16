@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Gesture
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.SentimentSatisfiedAlt
 import androidx.compose.material.icons.filled.SmartButton
 import androidx.compose.material.icons.filled.Spellcheck
@@ -255,6 +256,15 @@ fun HomeScreen() = FlorisScreen {
                 title = "किबोर्ड र कुञ्जीहरू (Keyboard Layout)",
                 summary = "किबोर्ड उचाइ, नम्बर पङ्क्ति, पपअप अक्षरहरू",
                 onClick = { navController.navigate(Routes.Settings.Keyboard) },
+            )
+        }
+
+        PreferenceGroup(title = "एआई भ्वाइस र अनुवाद (Gemini AI Voice)") {
+            Preference(
+                icon = Icons.Default.Mic,
+                title = "Gemini Live Transcribe & Translate",
+                summary = "गुगल AI स्टुडियो लाइभ मोडेल: रियल-टाइम भ्वाइस टाइपिङ र नेपाली-अङ्ग्रेजी अनुवाद",
+                onClick = { navController.navigate(Routes.Settings.GeminiVoice) },
             )
         }
 

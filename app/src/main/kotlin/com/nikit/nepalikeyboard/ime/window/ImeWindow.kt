@@ -63,6 +63,7 @@ import com.nikit.nepalikeyboard.ime.clipboard.ClipboardInputLayout
 import com.nikit.nepalikeyboard.ime.input.LocalInputFeedbackController
 import com.nikit.nepalikeyboard.ime.keyboard.ProvideKeyboardRowBaseHeight
 import com.nikit.nepalikeyboard.ime.media.MediaInputLayout
+import com.nikit.nepalikeyboard.ime.voice.VoiceInputLayout
 import com.nikit.nepalikeyboard.ime.sheet.BottomSheetWindow
 import com.nikit.nepalikeyboard.ime.text.TextInputLayout
 import com.nikit.nepalikeyboard.ime.theme.FlorisImeUi
@@ -227,6 +228,7 @@ private fun ImeInnerWindow() {
                 ImeUiMode.TEXT -> TextInputLayout()
                 ImeUiMode.MEDIA -> ProvideActualLayoutDirection { MediaInputLayout() }
                 ImeUiMode.CLIPBOARD -> ProvideActualLayoutDirection { ClipboardInputLayout() }
+                ImeUiMode.VOICE -> ProvideActualLayoutDirection { VoiceInputLayout() }
             }
             ImeSystemUiFloating()
         }
