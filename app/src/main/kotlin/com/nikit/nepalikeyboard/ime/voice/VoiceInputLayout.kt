@@ -76,6 +76,8 @@ import com.nikit.nepalikeyboard.app.FlorisPreferenceStore
 import com.nikit.nepalikeyboard.ime.ImeUiMode
 import com.nikit.nepalikeyboard.ime.keyboard.FlorisImeSizing
 import com.nikit.nepalikeyboard.ime.media.KeyboardLikeButton
+import com.nikit.nepalikeyboard.ime.text.key.KeyCode
+import com.nikit.nepalikeyboard.ime.text.key.KeyType
 import com.nikit.nepalikeyboard.ime.text.keyboard.TextKeyData
 import com.nikit.nepalikeyboard.ime.theme.FlorisImeUi
 import com.nikit.nepalikeyboard.keyboardManager
@@ -94,7 +96,7 @@ fun VoiceInputLayout(
 ) {
     val context = LocalContext.current
     val keyboardManager by context.keyboardManager()
-    val prefs = FlorisPreferenceStore.get()
+    val prefs by FlorisPreferenceStore
     val scope = rememberCoroutineScope()
 
     val isListening by GeminiLiveVoiceManager.isListening.collectAsState()
@@ -480,7 +482,7 @@ fun VoiceInputLayout(
             KeyboardLikeButton(
                 elementName = FlorisImeUi.MediaBottomRowButton.elementName,
                 inputEventDispatcher = keyboardManager.inputEventDispatcher,
-                keyData = TextKeyData.ENTER,
+                keyData = TextKeyData(code = KeyCode.ENTER, type = KeyType.ENTER_EDITING, label = "enter"),
                 modifier = Modifier.fillMaxHeight(),
             ) {
                 Icon(
