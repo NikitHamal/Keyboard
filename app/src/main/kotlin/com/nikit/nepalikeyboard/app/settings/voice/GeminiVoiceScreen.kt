@@ -66,6 +66,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nikit.nepalikeyboard.app.FlorisPreferenceStore
 import com.nikit.nepalikeyboard.app.enumDisplayEntriesOf
 import com.nikit.nepalikeyboard.ime.voice.GeminiLiveVoiceManager
 import com.nikit.nepalikeyboard.ime.voice.GeminiTranslateTarget
@@ -89,6 +90,7 @@ fun GeminiVoiceScreen() = FlorisScreen {
     title = "Gemini Live Voice & Translate"
     previewFieldVisible = true
 
+    val prefs by FlorisPreferenceStore
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
@@ -249,19 +251,11 @@ fun GeminiVoiceScreen() = FlorisScreen {
             ListPreference(
                 listPref = prefs.geminiVoice.mode,
                 title = "Default Voice Mode",
-                summary = when (prefs.geminiVoice.mode.get()) {
-                    GeminiVoiceMode.TRANSCRIBE -> "Live Transcribe (Speech to Text)"
-                    GeminiVoiceMode.TRANSLATE -> "Live Translate (Voice Translation)"
-                },
                 entries = enumDisplayEntriesOf(GeminiVoiceMode::class),
             )
             ListPreference(
                 listPref = prefs.geminiVoice.translateTarget,
                 title = "Translation Direction",
-                summary = when (prefs.geminiVoice.translateTarget.get()) {
-                    GeminiTranslateTarget.NEPALI_TO_ENGLISH -> "🇳🇵 Nepali → 🇬🇧 English"
-                    GeminiTranslateTarget.ENGLISH_TO_NEPALI -> "🇬🇧 English → 🇳🇵 Nepali"
-                },
                 entries = enumDisplayEntriesOf(GeminiTranslateTarget::class),
                 enabledIf = { prefs.geminiVoice.mode.get() == GeminiVoiceMode.TRANSLATE },
             )
