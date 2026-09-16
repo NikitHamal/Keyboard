@@ -42,6 +42,8 @@ import com.nikit.nepalikeyboard.ime.text.gestures.SwipeAction
 import com.nikit.nepalikeyboard.ime.text.key.KeyHintMode
 import com.nikit.nepalikeyboard.ime.text.key.UtilityKeyAction
 import com.nikit.nepalikeyboard.ime.theme.ThemeMode
+import com.nikit.nepalikeyboard.ime.voice.GeminiTranslateTarget
+import com.nikit.nepalikeyboard.ime.voice.GeminiVoiceMode
 import com.nikit.nepalikeyboard.ime.window.ImeWindowMode
 import dev.patrickgold.jetpref.datastore.ui.ListPreferenceEntry
 import dev.patrickgold.jetpref.datastore.ui.listPrefEntries
@@ -53,6 +55,34 @@ import kotlin.reflect.KClass
 private const val DEFAULT = ""
 
 private val ENUM_DISPLAY_ENTRIES = mapOf<Pair<KClass<*>, String>, @Composable () -> List<ListPreferenceEntry<*>>>(
+    GeminiVoiceMode::class to DEFAULT to {
+        listPrefEntries {
+            entry(
+                key = GeminiVoiceMode.TRANSCRIBE,
+                label = "Live Transcribe (Speech to Text)",
+                description = "Directly type what you speak in Devanagari or English",
+            )
+            entry(
+                key = GeminiVoiceMode.TRANSLATE,
+                label = "Live Translate (Voice Translation)",
+                description = "Translate spoken words real-time into English or Nepali",
+            )
+        }
+    },
+    GeminiTranslateTarget::class to DEFAULT to {
+        listPrefEntries {
+            entry(
+                key = GeminiTranslateTarget.NEPALI_TO_ENGLISH,
+                label = "🇳🇵 Nepali → 🇬🇧 English",
+                description = "Speak Nepali, type English text",
+            )
+            entry(
+                key = GeminiTranslateTarget.ENGLISH_TO_NEPALI,
+                label = "🇬🇧 English → 🇳🇵 Nepali",
+                description = "Speak English, type Nepali text",
+            )
+        }
+    },
     AppTheme::class to DEFAULT to {
         listPrefEntries {
             entry(
@@ -741,6 +771,6 @@ fun <V : Any> enumDisplayEntriesOf(
     variant: String = DEFAULT,
 ): List<ListPreferenceEntry<V>> {
     @Suppress("UNCHECKED_CAST")
-    return ENUM_DISPLAY_ENTRIES[enumClass to variant]?.invoke()
-        as List<ListPreferenceEntry<V>>
+    return (ENUM_DISPLAY_ENTRIES[enumClass to variant]?.invoke() as? List<ListPreferenceEntry<V>>)
+        ?: emptyList()
 }

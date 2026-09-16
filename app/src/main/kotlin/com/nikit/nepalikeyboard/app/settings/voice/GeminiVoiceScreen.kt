@@ -78,6 +78,7 @@ import dev.patrickgold.jetpref.datastore.ui.ListPreference
 import dev.patrickgold.jetpref.datastore.ui.Preference
 import dev.patrickgold.jetpref.datastore.ui.PreferenceGroup
 import dev.patrickgold.jetpref.datastore.ui.SwitchPreference
+import dev.patrickgold.jetpref.datastore.ui.listPrefEntries
 import dev.patrickgold.jetpref.material.ui.JetPrefAlertDialog
 import kotlinx.coroutines.launch
 
@@ -251,12 +252,34 @@ fun GeminiVoiceScreen() = FlorisScreen {
             ListPreference(
                 listPref = prefs.geminiVoice.mode,
                 title = "Default Voice Mode",
-                entries = enumDisplayEntriesOf(GeminiVoiceMode::class),
+                entries = listPrefEntries {
+                    entry(
+                        key = GeminiVoiceMode.TRANSCRIBE,
+                        label = "Live Transcribe (Speech to Text)",
+                        description = "Directly type what you speak in Devanagari or English",
+                    )
+                    entry(
+                        key = GeminiVoiceMode.TRANSLATE,
+                        label = "Live Translate (Voice Translation)",
+                        description = "Translate spoken words real-time into English or Nepali",
+                    )
+                },
             )
             ListPreference(
                 listPref = prefs.geminiVoice.translateTarget,
                 title = "Translation Direction",
-                entries = enumDisplayEntriesOf(GeminiTranslateTarget::class),
+                entries = listPrefEntries {
+                    entry(
+                        key = GeminiTranslateTarget.NEPALI_TO_ENGLISH,
+                        label = "🇳🇵 Nepali → 🇬🇧 English",
+                        description = "Speak Nepali, type English text",
+                    )
+                    entry(
+                        key = GeminiTranslateTarget.ENGLISH_TO_NEPALI,
+                        label = "🇬🇧 English → 🇳🇵 Nepali",
+                        description = "Speak English, type Nepali text",
+                    )
+                },
                 enabledIf = { prefs.geminiVoice.mode.get() == GeminiVoiceMode.TRANSLATE },
             )
             SwitchPreference(
