@@ -58,6 +58,7 @@ object GeminiLiveVoiceManager {
     private const val CHUNK_SIZE = 1024
 
     private val scope = CoroutineScope(Dispatchers.Main + Job())
+    private val prefs by FlorisPreferenceStore
 
     private val _isListening = MutableStateFlow(false)
     val isListening = _isListening.asStateFlow()
@@ -112,7 +113,6 @@ object GeminiLiveVoiceManager {
             return
         }
 
-        val prefs = FlorisPreferenceStore.get()
         val apiKey = prefs.geminiVoice.apiKey.get().trim()
         if (apiKey.isEmpty()) {
             _errorMessage.value = "Gemini API key is required. Tap settings to configure."
@@ -427,7 +427,7 @@ object GeminiLiveVoiceManager {
                         if (delta.isNotEmpty()) {
                             scope.launch {
                                 _currentPreviewText.value += delta
-                                val editor = context.editorInstance()
+                                val editor = context.editorInstance().value
                                 editor.commitText(delta)
                             }
                         }
