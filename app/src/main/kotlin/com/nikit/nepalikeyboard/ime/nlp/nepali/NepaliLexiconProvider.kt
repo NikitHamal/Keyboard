@@ -87,16 +87,41 @@ class NepaliLexiconProvider(context: Context) : SuggestionProvider {
         }
         if (roman.isBlank()) return emptyList()
         repository.ensureLoaded(appContext)
-        return repository.suggest(roman, limit = maxCandidateCount).mapIndexed { index, suggestion ->
-            WordSuggestionCandidate(
-                text = suggestion.text,
-                secondaryText = if (suggestion.isLiteral) null else roman,
-                confidence = 1.0 / (1.0 + index),
-                isEligibleForAutoCommit = false,
-                isEligibleForUserRemoval = true,
-                sourceProvider = this,
+        val exactMatch = repository.getExactMatch(roman)
+        val rawSuggestions = repository.suggest(roman, limit = maxCandidateCount)
+        val candidates = ArrayList<SuggestionCandidate>(maxCandidateCount)
+        val seen = HashSet<String>()
+
+        if (exactMatch != null) {
+            candidates.add(
+                WordSuggestionCandidate(
+                    text = exactMatch,
+                    secondaryText = roman,
+                    confidence = 1.0,
+                    isEligibleForAutoCommit = false,
+                    isEligibleForUserRemoval = false,
+                    sourceProvider = this,
+                )
             )
+            seen.add(exactMatch)
         }
+
+        for (suggestion in rawSuggestions) {
+            if (seen.add(suggestion.text)) {
+                candidates.add(
+                    WordSuggestionCandidate(
+                        text = suggestion.text,
+                        secondaryText = if (suggestion.isLiteral) null else roman,
+                        confidence = 1.0 / (1.0 + candidates.size),
+                        isEligibleForAutoCommit = false,
+                        isEligibleForUserRemoval = true,
+                        sourceProvider = this,
+                    )
+                )
+                if (candidates.size >= maxCandidateCount) break
+            }
+        }
+        return candidates
     }
 
     override suspend fun notifySuggestionAccepted(subtype: Subtype, candidate: SuggestionCandidate) {

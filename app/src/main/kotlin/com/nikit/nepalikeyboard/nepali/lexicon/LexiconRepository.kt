@@ -159,15 +159,43 @@ class LexiconRepository private constructor(
         }
         exactMatches.clear()
         exactMatches.putAll(map)
+        stemCache.clear()
+    }
+
+    private val stemCache = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    /**
+     * Resolves compound Nepali words typed with attached postpositions or inflections
+     * (e.g. "nepalma" -> "नेपालमा", "tapaiko" -> "तपाईंको", "satilai" -> "साथीलाई", "manxeharu" -> "मान्छेहरू").
+     */
+    fun resolveStemWithSuffix(input: String): String? {
+        if (input.length < 3) return null
+        stemCache[input]?.let { return it }
+
+        for ((suffix, devSuffix) in SUFFIX_MAP) {
+            if (input.length > suffix.length && input.endsWith(suffix)) {
+                val stem = input.substring(0, input.length - suffix.length)
+                val baseDev = exactMatches[stem]
+                if (baseDev != null) {
+                    val combined = baseDev + devSuffix
+                    stemCache[input] = combined
+                    return combined
+                }
+            }
+        }
+        return null
     }
 
     /**
-     * Fast O(1) synchronous lookup of the exact canonical Devanagari word for [romanInput].
-     * Returns null if no exact word/alias match is known.
+     * Fast O(1) synchronous lookup of the exact canonical Devanagari word for [romanInput],
+     * including dynamic stem+suffix postposition compounds.
+     * Returns null if no exact word/alias/compound match is known.
      */
     fun getExactMatch(romanInput: String): String? {
         if (romanInput.isEmpty()) return null
-        return exactMatches[romanInput.lowercase()]
+        val lower = romanInput.lowercase()
+        exactMatches[lower]?.let { return it }
+        return resolveStemWithSuffix(lower)
     }
 
     /** Install the learned-word table. Called after DataStore has been read. */
@@ -369,6 +397,39 @@ class LexiconRepository private constructor(
          * pass stays well under a frame budget even on a low-end device.
          */
         private const val CANDIDATE_BUFFER_SIZE = 48
+
+        /**
+         * Ordered suffixes for dynamic compounding (postpositions & verbal inflections).
+         * Longer suffixes are matched first.
+         */
+        val SUFFIX_MAP: List<Pair<String, String>> = listOf(
+            // Compound Postpositions & Inflections
+            "sanga" to "सँग",
+            "snga" to "सँग",
+            "dekhi" to "देखि",
+            "bata" to "बाट",
+            "haru" to "हरू",
+            "lai" to "लाई",
+            "ko" to "को",
+            "ka" to "का",
+            "ki" to "की",
+            "ma" to "मा",
+            "le" to "ले",
+            "ni" to "नि",
+            "ta" to "त",
+            // Common verbal endings
+            "chhan" to "छन्",
+            "chan" to "छन्",
+            "xan" to "छन्",
+            "chha" to "छ",
+            "xa" to "छ",
+            "chhu" to "छु",
+            "xu" to "छु",
+            "chhau" to "छौ",
+            "xau" to "छौ",
+            "thiyo" to "थियो",
+            "thie" to "थिए"
+        )
 
         @Volatile
         private var instance: LexiconRepository? = null

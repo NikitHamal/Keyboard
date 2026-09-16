@@ -31,11 +31,15 @@ import com.materialkolor.dynamiccolor.ColorSpec
 import com.materialkolor.scheme.DynamicScheme
 import org.florisboard.lib.android.AndroidVersion
 
+val DEFAULT_CRIMSON = Color(0xFF8F1D2C)
 val DEFAULT_GREEN = Color(0xFF4CAF50)
 
 object ColorMappings {
 
     val colors = listOf(
+        DEFAULT_CRIMSON, // NEPALI CRIMSON
+        Color(0xFFD4AF37), // HIMALAYAN GOLD
+        Color(0xFFC41E3A), // BRIGHT CRIMSON
         DEFAULT_GREEN, // GREEN 500
         Color(0xFFF44336), // RED 500
         Color(0xFFE91E63), // PINK 500
@@ -74,7 +78,7 @@ fun systemAccentOrDefault(default: Color): Color {
             getSystemAccent()
         }
         default.isUnspecified -> {
-            DEFAULT_GREEN
+            DEFAULT_CRIMSON
         }
         else -> {
             default
