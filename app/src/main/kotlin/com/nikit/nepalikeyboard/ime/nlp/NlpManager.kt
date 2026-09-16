@@ -28,7 +28,6 @@ import com.nikit.nepalikeyboard.ime.core.Subtype
 import com.nikit.nepalikeyboard.ime.editor.EditorContent
 import com.nikit.nepalikeyboard.ime.editor.EditorRange
 import com.nikit.nepalikeyboard.ime.media.emoji.EmojiSuggestionProvider
-import com.nikit.nepalikeyboard.ime.nlp.han.HanShapeBasedLanguageProvider
 import com.nikit.nepalikeyboard.ime.nlp.latin.LatinLanguageProvider
 import com.nikit.nepalikeyboard.ime.nlp.nepali.NepaliLexiconProvider
 import com.nikit.nepalikeyboard.keyboardManager
@@ -66,7 +65,6 @@ class NlpManager(context: Context) {
     private val providers = guardedByLock {
         mapOf(
             LatinLanguageProvider.ProviderId to ProviderInstanceWrapper(LatinLanguageProvider(context)),
-            HanShapeBasedLanguageProvider.ProviderId to ProviderInstanceWrapper(HanShapeBasedLanguageProvider(context)),
             NepaliLexiconProvider.ProviderId to ProviderInstanceWrapper(NepaliLexiconProvider(context)),
         )
     }

@@ -47,6 +47,7 @@ class LexiconRepository private constructor(
     private val initMutex = Mutex()
 
     private val trie = RadixTrie()
+    private val exactMatches = java.util.concurrent.ConcurrentHashMap<String, String>()
 
     /** Ranking engine; not thread-safe, confined to [computeDispatcher]. */
     private val ranker = CandidateRanker()
@@ -143,10 +144,30 @@ class LexiconRepository private constructor(
         return json.decodeFromString(LexiconAsset.serializer(), text)
     }
 
-    /** Populate the trie and ranker from a decoded asset. Runs on [computeDispatcher]. */
+    /** Populate the trie, ranker, and fast exact match map from a decoded asset. Runs on [computeDispatcher]. */
     private fun buildIndexes(asset: LexiconAsset) {
         trie.insertAll(asset.words)
         ranker.loadBigrams(asset.bigrams)
+        val map = HashMap<String, String>(asset.words.size * 2)
+        for (entry in asset.words) {
+            for (alias in entry.allRomans) {
+                val lower = alias.lowercase()
+                if (!map.containsKey(lower)) {
+                    map[lower] = entry.devanagari
+                }
+            }
+        }
+        exactMatches.clear()
+        exactMatches.putAll(map)
+    }
+
+    /**
+     * Fast O(1) synchronous lookup of the exact canonical Devanagari word for [romanInput].
+     * Returns null if no exact word/alias match is known.
+     */
+    fun getExactMatch(romanInput: String): String? {
+        if (romanInput.isEmpty()) return null
+        return exactMatches[romanInput.lowercase()]
     }
 
     /** Install the learned-word table. Called after DataStore has been read. */

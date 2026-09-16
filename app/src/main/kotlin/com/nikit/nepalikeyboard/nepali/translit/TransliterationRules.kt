@@ -217,7 +217,13 @@ object TransliterationRules {
         Rule("kshya", Devanagari.KSHYA, priority = 10, kind = RuleKind.SEGMENT),
         Rule("kshy", Devanagari.KSHYA, priority = 11, kind = RuleKind.SEGMENT),
         Rule("ksh", Devanagari.KSHATTRA, priority = 10, kind = RuleKind.CONSONANT),
-        Rule("x", Devanagari.KSHATTRA, priority = 20, kind = RuleKind.CONSONANT),
+        Rule("X", Devanagari.KSHATTRA, caseSensitive = true, priority = 15, kind = RuleKind.CONSONANT),
+        Rule("nx", Devanagari.NA.toString() + Devanagari.VIRAMA + Devanagari.CHA, priority = 14, kind = RuleKind.CONSONANT),
+        Rule("nch", Devanagari.NA.toString() + Devanagari.VIRAMA + Devanagari.CHA, priority = 15, kind = RuleKind.CONSONANT),
+        Rule("rx", Devanagari.RA.toString() + Devanagari.VIRAMA + Devanagari.CHA, priority = 14, kind = RuleKind.CONSONANT),
+        Rule("rch", Devanagari.RA.toString() + Devanagari.VIRAMA + Devanagari.CHA, priority = 15, kind = RuleKind.CONSONANT),
+        Rule("chha", Devanagari.CHA.toString(), priority = 12, kind = RuleKind.CONSONANT),
+        Rule("x", Devanagari.CHA.toString(), priority = 20, kind = RuleKind.CONSONANT),
         Rule("gya", Devanagari.GYA, priority = 15, kind = RuleKind.CONSONANT),
         Rule("gy", Devanagari.GYA, priority = 20, kind = RuleKind.CONSONANT),
         Rule("gn", Devanagari.GYA, priority = 25, kind = RuleKind.CONSONANT),
@@ -316,15 +322,19 @@ object TransliterationRules {
      */
     val SCHWA_RETENTION_WORDS: Set<String> = setOf(
         // Very short words where the final vowel is phonologically real.
-        "ma", "ta", "ra", "ki", "ka", "la", "na", "cha", "ho",
+        "ma", "ta", "ra", "ki", "ka", "la", "na", "cha", "ho", "xa",
         "ba", "ja", "ga", "da", "pa", "sa", "ha", "ya", "va",
-        // Common loans that keep a final schwa.
+        // Common loans and high-frequency words that keep a final vowel.
         "data", "drama", "sala", "kala", "pala", "nara", "dhara",
         "papa", "mama", "baba", "nana", "tara", "kara", "para",
         "yatra", "mitra", "putra", "patra", "shastra", "mantra",
-        // Nepali words ending in a pronounced -a.
+        // Nepali words ending in a pronounced -a / matra aa.
         "jharna", "khukura", "aama", "bhai", "didi", "bahu",
-        "guru", "jetha", "kancha", "thula", "sano"
+        "guru", "jetha", "kancha", "thula", "sano", "dhoka", "hawa",
+        "maya", "katha", "ghatana", "yojana", "janata", "janta",
+        "mula", "paisa", "sathi", "kura", "chinta", "neta", "sewa",
+        "sukha", "dukkha", "jhagada", "samaya", "bichar", "khana",
+        "bata", "khoja", "rakha", "bana", "deu", "leu"
     )
 
     /**

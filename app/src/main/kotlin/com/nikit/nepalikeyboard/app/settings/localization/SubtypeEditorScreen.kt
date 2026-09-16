@@ -72,7 +72,7 @@ import com.nikit.nepalikeyboard.ime.core.SubtypePreset
 import com.nikit.nepalikeyboard.ime.keyboard.LayoutArrangementComponent
 import com.nikit.nepalikeyboard.ime.keyboard.LayoutType
 import com.nikit.nepalikeyboard.ime.keyboard.extCorePopupMapping
-import com.nikit.nepalikeyboard.ime.nlp.han.HanShapeBasedLanguageProvider
+import com.nikit.nepalikeyboard.ime.nlp.nepali.NepaliLexiconProvider
 import com.nikit.nepalikeyboard.ime.nlp.latin.LatinLanguageProvider
 import com.nikit.nepalikeyboard.keyboardManager
 import com.nikit.nepalikeyboard.lib.FlorisLocale
@@ -397,8 +397,8 @@ fun SubtypeEditorScreen(id: Long?) = FlorisScreen {
                 // TODO: Put this map somewhere more formal (another KeyboardExtension field?)
                 //  optionally use a string resource below
                 val nlpProviderMappings = mapOf(
+                    NepaliLexiconProvider.ProviderId to "Nepali Lexicon",
                     LatinLanguageProvider.ProviderId to "Latin",
-                    HanShapeBasedLanguageProvider.ProviderId to "Chinese shape-based"
                 )
 
                 val nlpProviderMappingIds = remember(nlpProviderMappings) {

@@ -24,6 +24,7 @@ import com.nikit.nepalikeyboard.ime.nlp.SpellingProvider
 import com.nikit.nepalikeyboard.ime.nlp.SpellingResult
 import com.nikit.nepalikeyboard.ime.nlp.SuggestionCandidate
 import com.nikit.nepalikeyboard.ime.nlp.SuggestionProvider
+import com.nikit.nepalikeyboard.ime.nlp.WordSuggestionCandidate
 import com.nikit.nepalikeyboard.lib.devtools.flogDebug
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -105,21 +106,32 @@ class LatinLanguageProvider(context: Context) : SpellingProvider, SuggestionProv
         allowPossiblyOffensive: Boolean,
         isPrivateSession: Boolean,
     ): List<SuggestionCandidate> {
-        return emptyList()
-        /*val word = content.composingText.ifBlank { "next" }
-        val suggestions = buildList {
-            for (n in 0 until maxCandidateCount) {
-                add(WordSuggestionCandidate(
-                    text = "$word$n",
-                    secondaryText = if (n % 2 == 1) "secondary" else null,
-                    confidence = 0.5,
-                    isEligibleForAutoCommit = false,//n == 0 && word.startsWith("auto"),
-                    // We set ourselves as the source provider so we can get notify events for our candidate
-                    sourceProvider = this@LatinLanguageProvider,
-                ))
+        val rawWord = content.composingText.ifBlank {
+            content.currentWordText.ifBlank {
+                content.textBeforeSelection.takeLastWhile { it.isLetter() }
             }
         }
-        return suggestions*/
+        if (rawWord.isBlank()) return emptyList()
+        val query = rawWord.lowercase()
+        preload(subtype)
+        return wordData.withLock { map ->
+            map.entries
+                .filter { it.key.startsWith(query) }
+                .sortedByDescending { it.value }
+                .take(maxCandidateCount)
+                .map { entry ->
+                    val isCapitalized = rawWord.first().isUpperCase()
+                    val word = if (isCapitalized) entry.key.replaceFirstChar { it.uppercase() } else entry.key
+                    WordSuggestionCandidate(
+                        text = word,
+                        secondaryText = null,
+                        confidence = entry.value / 255.0,
+                        isEligibleForAutoCommit = false,
+                        isEligibleForUserRemoval = false,
+                        sourceProvider = this@LatinLanguageProvider,
+                    )
+                }
+        }
     }
 
     override suspend fun notifySuggestionAccepted(subtype: Subtype, candidate: SuggestionCandidate) {
