@@ -59,36 +59,11 @@ object GeminiLiveVoiceManager {
     private const val WS_BASE_URL =
         "wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent"
 
-    /** Dedicated streaming STT model (85+ langs, interim + finalized transcripts). */
-    const val TRANSCRIBE_MODEL = "gemini-3.5-transcribe-live"
+    /** Fixed streaming STT model used for Transcribe mode (85+ langs). */
+    private const val TRANSCRIBE_MODEL = "gemini-3.5-transcribe-live"
 
-    /** Dedicated streaming speech-to-speech translation model (70+ langs). */
-    const val TRANSLATE_MODEL = "gemini-3.5-live-translate-preview"
-
-    /** General conversational Live model — works for both modes via system prompt. */
-    const val GENERAL_LIVE_MODEL = "gemini-3.1-flash-live-preview"
-
-    /** Fallback general Live model. */
-    const val FALLBACK_LIVE_MODEL = "gemini-2.5-flash-native-audio-preview-12-2025"
-
-    /**
-     * Model ids that are known-dead (e.g. gemini-2.0-flash-exp was shut down 2026-06-01)
-     * or were never valid Live models. These auto-upgrade to the per-mode dedicated
-     * model so users stuck on "Connecting..." recover without manual steps.
-     */
-    private val LEGACY_MODELS = setOf(
-        "",
-        "gemini-2.0-flash-exp",
-        "models/gemini-2.0-flash-exp",
-        "gemini-2.0-flash-live-001",
-        "models/gemini-2.0-flash-live-001",
-        "gemini-2.0-flash-live-preview-04-09",
-        "models/gemini-2.0-flash-live-preview-04-09",
-        "gemini-3.5-live-translate",
-        "models/gemini-3.5-live-translate",
-        "gemini-3.8-live",
-        "models/gemini-3.8-live",
-    )
+    /** Fixed streaming speech-to-speech model used for Translate mode (70+ langs). */
+    private const val TRANSLATE_MODEL = "gemini-3.5-live-translate-preview"
 
     private const val SAMPLE_RATE = 16000
     private const val CHANNEL_CONFIG = AudioFormat.CHANNEL_IN_MONO
@@ -137,42 +112,15 @@ object GeminiLiveVoiceManager {
     }
 
     /**
-     * Resolve the effective model id for [mode].
-     *
-     * Legacy / dead ids (incl. the old "gemini-2.0-flash-exp" default, shut down
-     * 2026-06-01) and mismatched dedicated models (e.g. transcribe model while in
-     * translate mode) auto-upgrade to the per-mode dedicated model. Explicit
-     * modern custom models are respected untouched.
+     * The model is fixed per mode — there is no user-visible model setting.
+     * Transcribe always uses the streaming STT model, Translate always uses
+     * the streaming translation model.
      */
-    fun resolveModel(rawModel: String, mode: GeminiVoiceMode): String {
-        val trimmed = rawModel.trim()
-        val normalized = if (trimmed.startsWith("models/")) trimmed else "models/$trimmed"
-        val id = normalized.removePrefix("models/")
-        if (trimmed.isEmpty() || trimmed in LEGACY_MODELS || id in LEGACY_MODELS) {
-            return when (mode) {
-                GeminiVoiceMode.TRANSCRIBE -> TRANSCRIBE_MODEL
-                GeminiVoiceMode.TRANSLATE -> TRANSLATE_MODEL
-            }
+    private fun modelFor(mode: GeminiVoiceMode): String {
+        return when (mode) {
+            GeminiVoiceMode.TRANSCRIBE -> TRANSCRIBE_MODEL
+            GeminiVoiceMode.TRANSLATE -> TRANSLATE_MODEL
         }
-        // Dedicated transcribe model cannot translate and vice versa — swap instead
-        // of letting the server hang up with close code 1008.
-        if (mode == GeminiVoiceMode.TRANSLATE && (id == TRANSCRIBE_MODEL || id == "gemini-3.5-transcribe")) {
-            return TRANSLATE_MODEL
-        }
-        if (mode == GeminiVoiceMode.TRANSCRIBE && (id == TRANSLATE_MODEL || id == TRANSLATE_MODEL.removeSuffix("-preview"))) {
-            return TRANSCRIBE_MODEL
-        }
-        return id
-    }
-
-    fun isTranscribeLiveModel(model: String): Boolean {
-        val id = model.removePrefix("models/")
-        return id == TRANSCRIBE_MODEL || id == "gemini-3.5-transcribe"
-    }
-
-    fun isTranslateLiveModel(model: String): Boolean {
-        val id = model.removePrefix("models/")
-        return id == TRANSLATE_MODEL || id == TRANSLATE_MODEL.removeSuffix("-preview")
     }
 
     /**
@@ -205,13 +153,10 @@ object GeminiLiveVoiceManager {
             return
         }
 
-        val rawModel = prefs.geminiVoice.model.get().trim()
         val mode = prefs.geminiVoice.mode.get()
         val translateTarget = prefs.geminiVoice.translateTarget.get()
         val autoStopSilence = prefs.geminiVoice.autoStopSilence.get()
-        // Auto-upgrade dead defaults (gemini-2.0-flash-exp was shut down 2026-06-01)
-        // and mismatched dedicated models to the per-mode dedicated model.
-        val model = resolveModel(rawModel, mode)
+        val model = modelFor(mode)
 
         _errorMessage.value = null
         _currentPreviewText.value = ""
@@ -228,7 +173,7 @@ object GeminiLiveVoiceManager {
             if (_isConnecting.value && !isSetupComplete) {
                 Log.e(TAG, "Connect timeout; model=$model")
                 _errorMessage.value =
-                    "Still connecting after 15s (model $model). Check API key, model id, and network, then retry."
+                    "Still connecting after 15s. Check your API key and network, then retry."
                 _statusMessage.value = "Connection timed out"
                 stopListening()
             }
@@ -240,8 +185,7 @@ object GeminiLiveVoiceManager {
         val listener = object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 currentWebSocket = webSocket
-                val systemPrompt = buildSystemPrompt(mode, translateTarget)
-                val setupMessage = buildSetupMessage(model, mode, translateTarget, systemPrompt)
+                val setupMessage = buildSetupMessage(model, mode, translateTarget)
                 Log.d(TAG, "WS open, sending setup for model=$model mode=$mode")
                 webSocket.send(setupMessage)
 
@@ -259,7 +203,7 @@ object GeminiLiveVoiceManager {
                     val code = response?.code
                     val detail = t.localizedMessage ?: t.javaClass.simpleName
                     val errText = if (code != null && code != 101) {
-                        "Connection failed (HTTP $code, model $model). Verify API key and model id."
+                        "Connection failed (HTTP $code). Verify your API key and network."
                     } else {
                         "Network error ($detail). Check connection and retry."
                     }
@@ -279,15 +223,13 @@ object GeminiLiveVoiceManager {
                     connectionWatchdogJob?.cancel()
                     Log.w(TAG, "WS closed code=$code reason=$reason setupComplete=$isSetupComplete")
                     if (_isConnecting.value && !isSetupComplete) {
-                        // Server hung up before setup finished — most commonly an
-                        // unknown/dead model id (close 1008) or a rejected key.
-                        // Surface it instead of silently resetting to idle.
-                        _errorMessage.value = if (code == 1008) {
-                            "Gemini rejected the session (model $model). Update the model id in Settings."
-                        } else if (reason.isNotBlank()) {
+                        // Server hung up before setup finished — most commonly a
+                        // rejected key or an invalid setup payload. Surface it
+                        // instead of silently resetting to idle.
+                        _errorMessage.value = if (reason.isNotBlank()) {
                             "Connection closed ($code): $reason"
                         } else {
-                            "Connection closed before setup (code $code, model $model). Verify API key and model."
+                            "Connection closed before setup (code $code). Verify your API key and retry."
                         }
                         _statusMessage.value = "Connection error"
                     }
@@ -358,111 +300,59 @@ object GeminiLiveVoiceManager {
         }
     }
 
-    private fun buildSystemPrompt(
-        mode: GeminiVoiceMode,
-        translateTarget: GeminiTranslateTarget
-    ): String {
-        return when (mode) {
-            GeminiVoiceMode.TRANSCRIBE -> {
-                "You are an ultra-fast, accurate speech-to-text transcriber for a mobile keyboard. " +
-                "You will receive live audio chunks. Output ONLY the exact transcribed text in real-time. " +
-                "If the speaker is speaking Nepali, transcribe in Nepali Devanagari script. " +
-                "If speaking English, transcribe in English. " +
-                "Do not output conversational greetings, notes, punctuation markup, or explanations."
-            }
-            GeminiVoiceMode.TRANSLATE -> {
-                when (translateTarget) {
-                    GeminiTranslateTarget.NEPALI_TO_ENGLISH -> {
-                        "You are a real-time speech translator for a mobile keyboard. " +
-                        "You will receive live Nepali audio chunks. Immediately output ONLY the accurate English translation. " +
-                        "Do not output the Nepali transcription. Do not output explanations, greetings, or conversational filler."
-                    }
-                    GeminiTranslateTarget.ENGLISH_TO_NEPALI -> {
-                        "You are a real-time speech translator for a mobile keyboard. " +
-                        "You will receive live English audio chunks. Immediately output ONLY the accurate Nepali (नेपाली Devanagari script) translation. " +
-                        "Do not output English text. Do not output explanations, greetings, or conversational filler."
-                    }
-                }
-            }
-        }
-    }
-
+    /**
+     * Minimal setup payload per mode. The server validates strictly (close 1007
+     * on any unknown field), so only documented fields are sent:
+     * - Transcribe: model + generationConfig.responseModalities=[TEXT] +
+     *   top-level inputAudioTranscription (empty = auto-detect).
+     * - Translate: model + generationConfig{responseModalities=[AUDIO],
+     *   translationConfig} + top-level input/outputAudioTranscription.
+     * translationConfig lives ONLY inside generationConfig — a top-level copy
+     * is rejected as "Unknown name translationConfig at 'setup'".
+     */
     private fun buildSetupMessage(
         model: String,
         mode: GeminiVoiceMode,
-        translateTarget: GeminiTranslateTarget,
-        systemPrompt: String
+        translateTarget: GeminiTranslateTarget
     ): String {
         val modelResource = if (model.startsWith("models/")) model else "models/$model"
         val root = JSONObject()
         val setup = JSONObject()
         setup.put("model", modelResource)
 
-        val isTranscribeLive = isTranscribeLiveModel(modelResource)
-        val isTranslateLive = isTranslateLiveModel(modelResource)
-
         val genConfig = JSONObject()
         val modalities = JSONArray()
-        // Dedicated translate model streams AUDIO (+ text transcripts); everything
-        // else streams TEXT for direct keyboard insertion.
-        modalities.put(if (isTranslateLive) "AUDIO" else "TEXT")
-        genConfig.put("responseModalities", modalities)
-
-        if (isTranslateLive) {
-            // Dedicated speech-to-speech translation config. BCP-47 target codes:
-            // Nepali "ne", English "en". echoTargetLanguage=true so the session
-            // never goes silently dead when input already matches the target.
+        if (mode == GeminiVoiceMode.TRANSLATE) {
+            modalities.put("AUDIO")
+            // BCP-47 target codes: Nepali "ne", English "en".
+            // echoTargetLanguage=true so the session never goes silently dead
+            // when the spoken input already matches the target language.
             val targetCode = when (translateTarget) {
                 GeminiTranslateTarget.NEPALI_TO_ENGLISH -> "en"
                 GeminiTranslateTarget.ENGLISH_TO_NEPALI -> "ne"
             }
-            val translationConfig = JSONObject().apply {
-                put("targetLanguageCode", targetCode)
-                put("echoTargetLanguage", true)
-            }
-            // translationConfig lives inside generationConfig on the wire
-            // (see live-translate WebSocket docs); also mirror it top-level in
-            // setup for forward-compat with SDK-shaped payloads.
-            genConfig.put("translationConfig", translationConfig)
-            genConfig.put("inputAudioTranscription", JSONObject())
-            genConfig.put("outputAudioTranscription", JSONObject())
-            setup.put("translationConfig", translationConfig)
-            setup.put("inputAudioTranscription", JSONObject())
-            setup.put("outputAudioTranscription", JSONObject())
+            genConfig.put(
+                "translationConfig",
+                JSONObject().apply {
+                    put("targetLanguageCode", targetCode)
+                    put("echoTargetLanguage", true)
+                }
+            )
         } else {
-            // Transcribe-live and general Live models: enable server-side input
-            // transcription so interim/final transcripts arrive even when the
-            // model streams TEXT. Empty languageCodes = auto-detect (85+ langs).
-            val transcriptionConfig = JSONObject().apply {
-                put("languageCodes", JSONArray())
-            }
-            setup.put("inputAudioTranscription", transcriptionConfig)
-            if (!isTranscribeLive) {
-                // General conversational Live models need the task prompt; the
-                // dedicated transcribe model ignores system instructions.
-                val sysInst = JSONObject()
-                val parts = JSONArray()
-                val textPart = JSONObject()
-                textPart.put("text", systemPrompt)
-                parts.put(textPart)
-                sysInst.put("parts", parts)
-                setup.put("systemInstruction", sysInst)
-            }
+            modalities.put("TEXT")
         }
-
+        genConfig.put("responseModalities", modalities)
         setup.put("generationConfig", genConfig)
 
-        // Server-side voice-activity detection (default behaviour); explicit so
-        // push-to-talk vs auto-detection stays predictable across models.
-        setup.put(
-            "realtimeInputConfig",
-            JSONObject().apply {
-                put("automaticActivityDetection", JSONObject())
-            }
-        )
+        setup.put("inputAudioTranscription", JSONObject())
+        if (mode == GeminiVoiceMode.TRANSLATE) {
+            setup.put("outputAudioTranscription", JSONObject())
+        }
 
         root.put("setup", setup)
-        return root.toString()
+        val message = root.toString()
+        Log.d(TAG, "setup for model=$modelResource mode=$mode: $message")
+        return message
     }
 
     private fun startAudioStreaming(
