@@ -19,6 +19,13 @@
     <!-- Required to prompt the user to install a downloaded update APK. -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
 
+    <!-- RECORD_AUDIO is declared exclusively for the user-initiated Gemini AI
+         voice typing and live translation feature when the user taps the microphone
+         button on the keyboard. Audio is captured as raw PCM and streamed only
+         to the Google AI Studio Live API using the user's own configured API key.
+         Audio is never recorded in the background or persisted to disk. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+
     <!-- Android 11+ only: Define that FlorisBoard requests to see all apps that
           ship with an IME or Spell Check service. This is used to guide the user
           in the Settings Ui why FlorisBoard may not be working.
@@ -140,6 +147,12 @@
                 <data android:mimeType="image/*"/>
             </intent-filter>
         </activity>
+
+        <!-- Voice Permission Helper Activity -->
+        <activity
+            android:name="com.nikit.nepalikeyboard.ime.voice.VoicePermissionActivity"
+            android:theme="@style/FlorisAppTheme.Transparent"
+            android:exported="false" />
 
         <!-- Transparent activity that receives the PackageInstaller callback
              for in-app updates. No UI of its own; finishes immediately after

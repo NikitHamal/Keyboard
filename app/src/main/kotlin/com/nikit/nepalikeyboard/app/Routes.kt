@@ -76,6 +76,7 @@ import com.nikit.nepalikeyboard.app.settings.theme.ThemeManagerScreen
 import com.nikit.nepalikeyboard.app.settings.theme.ThemeManagerScreenAction
 import com.nikit.nepalikeyboard.app.settings.theme.ThemeScreen
 import com.nikit.nepalikeyboard.app.settings.typing.TypingScreen
+import com.nikit.nepalikeyboard.app.settings.voice.GeminiVoiceScreen
 import com.nikit.nepalikeyboard.app.setup.SetupScreen
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -148,6 +149,10 @@ object Routes {
         @Serializable
         @Deeplink("settings/smartbar")
         object Smartbar
+
+        @Serializable
+        @Deeplink("settings/gemini-voice")
+        object GeminiVoice
 
         @Serializable
         @Deeplink("settings/typing")
@@ -304,6 +309,7 @@ object Routes {
             composableWithDeepLink(Settings.InputFeedback::class) { InputFeedbackScreen() }
 
             composableWithDeepLink(Settings.Smartbar::class) { SmartbarScreen() }
+            composableWithDeepLink(Settings.GeminiVoice::class) { GeminiVoiceScreen() }
 
             composableWithDeepLink(Settings.Typing::class) { TypingScreen() }
 

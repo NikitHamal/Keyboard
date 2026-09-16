@@ -23,6 +23,8 @@ import com.nikit.nepalikeyboard.app.settings.theme.ColorPreferenceSerializer
 import com.nikit.nepalikeyboard.app.settings.theme.DisplayKbdAfterDialogs
 import com.nikit.nepalikeyboard.app.settings.theme.SnyggLevel
 import com.nikit.nepalikeyboard.app.setup.NotificationPermissionState
+import com.nikit.nepalikeyboard.ime.voice.GeminiTranslateTarget
+import com.nikit.nepalikeyboard.ime.voice.GeminiVoiceMode
 import com.nikit.nepalikeyboard.ime.clipboard.CLIPBOARD_HISTORY_NUM_GRID_COLUMNS_AUTO
 import com.nikit.nepalikeyboard.ime.clipboard.ClipboardSyncBehavior
 import com.nikit.nepalikeyboard.ime.core.DisplayLanguageNamesIn
@@ -745,6 +747,30 @@ abstract class FlorisPreferenceModel : PreferenceModel() {
         val editorLevel = enum(
             key = "theme__editor_level",
             default = SnyggLevel.ADVANCED,
+        )
+    }
+
+    val geminiVoice = GeminiVoice()
+    inner class GeminiVoice {
+        val apiKey = string(
+            key = "gemini_voice__api_key",
+            default = "",
+        )
+        val model = string(
+            key = "gemini_voice__model",
+            default = "gemini-2.0-flash-exp",
+        )
+        val mode = enum(
+            key = "gemini_voice__mode",
+            default = GeminiVoiceMode.TRANSCRIBE,
+        )
+        val translateTarget = enum(
+            key = "gemini_voice__translate_target",
+            default = GeminiTranslateTarget.NEPALI_TO_ENGLISH,
+        )
+        val autoStopSilence = boolean(
+            key = "gemini_voice__auto_stop_silence",
+            default = true,
         )
     }
 
