@@ -80,19 +80,36 @@ class NepaliLexiconProvider(context: Context) : SuggestionProvider {
         if (word.isBlank()) return emptyList()
         var i = word.length
         while (i > 0 && NepaliRomanized.isDevanagariWordChar(word[i - 1])) i--
-        val roman = if (i == word.length) {
+        val roman = if (NepaliRomanized.currentRoman.isNotBlank()) {
+            NepaliRomanized.currentRoman
+        } else if (i == word.length) {
             word.filter { it in 'a'..'z' || it in 'A'..'Z' }
         } else {
             NepaliRomanized.reverseTransliterate(word.substring(i))
         }
         if (roman.isBlank()) return emptyList()
         repository.ensureLoaded(appContext)
+
         val exactMatch = repository.getExactMatch(roman)
-        val rawSuggestions = repository.suggest(roman, limit = maxCandidateCount)
+        val rawSuggestions = repository.suggest(roman, limit = maxCandidateCount, includeLiteral = false)
         val candidates = ArrayList<SuggestionCandidate>(maxCandidateCount)
         val seen = HashSet<String>()
 
-        if (exactMatch != null) {
+        // 1. Literal Romanized text in the very left corner of the strip
+        candidates.add(
+            WordSuggestionCandidate(
+                text = roman,
+                secondaryText = null,
+                confidence = 0.5,
+                isEligibleForAutoCommit = false,
+                isEligibleForUserRemoval = false,
+                sourceProvider = this,
+            )
+        )
+        seen.add(roman)
+
+        // 2. Exact Devanagari word or chat slang (e.g. नेपाल, छ, हुन्छ, भयो)
+        if (exactMatch != null && seen.add(exactMatch)) {
             candidates.add(
                 WordSuggestionCandidate(
                     text = exactMatch,
@@ -103,9 +120,9 @@ class NepaliLexiconProvider(context: Context) : SuggestionProvider {
                     sourceProvider = this,
                 )
             )
-            seen.add(exactMatch)
         }
 
+        // 3. Additional lexicon / trie completions
         for (suggestion in rawSuggestions) {
             if (seen.add(suggestion.text)) {
                 candidates.add(

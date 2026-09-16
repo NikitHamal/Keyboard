@@ -76,6 +76,13 @@ class PreviewFieldController {
     val focusRequester = FocusRequester()
     var isVisible by mutableStateOf(false)
     var text by mutableStateOf(TextFieldValue(""))
+
+    fun focus() {
+        isVisible = true
+        try {
+            focusRequester.requestFocus()
+        } catch (_: Throwable) {}
+    }
 }
 
 @Composable

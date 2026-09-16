@@ -71,6 +71,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         }
         activeState.isActionsOverflowVisible = false
         activeState.isActionsEditorVisible = false
+        NepaliRomanized.clearComposing()
         super.handleStartInputView(editorInfo, isRestart)
         val keyboardMode = when (editorInfo.inputAttributes.type) {
             InputAttributes.Type.NUMBER -> {
@@ -230,6 +231,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      */
     override fun commitText(text: String): Boolean {
         finalizeNepaliComposingWord()
+        NepaliRomanized.clearComposing()
         val isPhantomSpaceActive = phantomSpace.determine(text)
         autoSpace.setInactive()
         phantomSpace.setInactive()
@@ -279,6 +281,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
         val text = candidate.text.toString()
         if (text.isEmpty() || activeInfo.isRawInputEditor) return false
         val content = activeContent
+        NepaliRomanized.clearComposing()
         return if (content.composing.isValid) {
             phantomSpace.setActive(showComposingRegion = false, candidate = candidate)
             super.finalizeComposingText(text)
@@ -296,7 +299,7 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
             }
             val isPhantomSpaceActive = phantomSpace.determine(text)
             phantomSpace.setActive(showComposingRegion = false, candidate = candidate)
-            return if (isPhantomSpaceActive) {
+            if (isPhantomSpaceActive) {
                 super.commitText("$SPACE$text")
             } else {
                 super.commitText(text)
@@ -378,9 +381,11 @@ class EditorInstance(context: Context) : AbstractEditorInstance(context) {
      * @return True on success, false if an error occurred or the input connection is invalid.
      */
     fun deleteBackwards(unit: OperationUnit): Boolean {
+        NepaliRomanized.onBackspace()
         val content = activeContent
         if (unit == OperationUnit.CHARACTERS) {
             if (phantomSpace.isActive && content.currentWord.isValid && prefs.glide.immediateBackspaceDeletesWord.get()) {
+                NepaliRomanized.clearComposing()
                 return deleteBackwards(OperationUnit.WORDS)
             }
         }
