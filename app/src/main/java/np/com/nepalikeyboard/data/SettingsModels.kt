@@ -24,6 +24,8 @@ data class SettingsSnapshot(
     val showToolbar: Boolean = true,
     val autoCapitalize: Boolean = true,
     val autoCorrect: Boolean = false,
+    /** Padayog: glue को/मा/ले/बाट ... to the previous word automatically. */
+    val joinPadayog: Boolean = true,
     val devanagariNumerals: Boolean = false,
     val hapticsEnabled: Boolean = true,
     val hapticStrength: FeedbackStrength = FeedbackStrength.MEDIUM,

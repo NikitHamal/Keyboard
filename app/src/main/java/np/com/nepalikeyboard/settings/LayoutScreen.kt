@@ -153,6 +153,12 @@ fun LayoutScreen(
                 onCheckedChange = { value -> writer.write { it.setAutoCorrect(value) } },
             )
             SettingSwitchRow(
+                title = stringResource(R.string.setting_join_padayog),
+                description = stringResource(R.string.setting_join_padayog_desc),
+                checked = snapshot.joinPadayog,
+                onCheckedChange = { value -> writer.write { it.setJoinPadayog(value) } },
+            )
+            SettingSwitchRow(
                 title = stringResource(R.string.clipboard_header),
                 description = stringResource(R.string.clipboard_secure_notice),
                 checked = snapshot.clipboardEnabled,

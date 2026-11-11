@@ -103,6 +103,8 @@ class SettingsRepository(
 
     suspend fun setAutoCorrect(value: Boolean) = write(Keys.AUTO_CORRECT, value)
 
+    suspend fun setJoinPadayog(value: Boolean) = write(Keys.JOIN_PADAYOG, value)
+
     suspend fun setDevanagariNumerals(value: Boolean) = write(Keys.DEVANAGARI_NUMERALS, value)
 
     suspend fun setHapticsEnabled(value: Boolean) = write(Keys.HAPTICS_ENABLED, value)
@@ -160,6 +162,7 @@ class SettingsRepository(
             showToolbar = prefs[Keys.SHOW_TOOLBAR] ?: defaults.showToolbar,
             autoCapitalize = prefs[Keys.AUTO_CAPITALIZE] ?: defaults.autoCapitalize,
             autoCorrect = prefs[Keys.AUTO_CORRECT] ?: defaults.autoCorrect,
+            joinPadayog = prefs[Keys.JOIN_PADAYOG] ?: defaults.joinPadayog,
             devanagariNumerals = prefs[Keys.DEVANAGARI_NUMERALS] ?: defaults.devanagariNumerals,
             hapticsEnabled = prefs[Keys.HAPTICS_ENABLED] ?: defaults.hapticsEnabled,
             hapticStrength = prefs[Keys.HAPTIC_STRENGTH].toEnumOr(defaults.hapticStrength),
@@ -190,6 +193,7 @@ class SettingsRepository(
         val SHOW_TOOLBAR = booleanPreferencesKey("show_toolbar")
         val AUTO_CAPITALIZE = booleanPreferencesKey("auto_capitalize")
         val AUTO_CORRECT = booleanPreferencesKey("auto_correct")
+        val JOIN_PADAYOG = booleanPreferencesKey("join_padayog")
         val DEVANAGARI_NUMERALS = booleanPreferencesKey("devanagari_numerals")
         val HAPTICS_ENABLED = booleanPreferencesKey("haptics_enabled")
         val HAPTIC_STRENGTH = stringPreferencesKey("haptic_strength")

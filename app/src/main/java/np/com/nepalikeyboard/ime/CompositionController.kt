@@ -347,6 +347,37 @@ internal class CompositionController(private val host: ImeHost) {
     // Context helpers (capitalization, predictions)
     // -----------------------------------------------------------------------
 
+    /** Replaces the text inside our composing region (roman buffer is untouched). */
+    fun showComposing(ic: InputConnection, text: String): Boolean {
+        if (!composingActive || text.isEmpty()) return false
+        return try {
+            ic.setComposingText(text, 1)
+            true
+        } catch (_: RuntimeException) {
+            false
+        }
+    }
+
+    /**
+     * Padayog commit: removes the single space in front of the composing word and commits [text]
+     * directly behind the previous word (राम + को -> रामको).
+     */
+    fun commitJoined(ic: InputConnection, text: String): String {
+        buffer.setLength(0)
+        composingActive = false
+        try {
+            ic.beginBatchEdit()
+            ic.setComposingText("", 1)
+            val before = ic.getTextBeforeCursor(2, 0)?.toString().orEmpty()
+            if (before.endsWith(" ") && before.length == 2 && before[0] != ' ') ic.deleteSurroundingText(1, 0)
+            ic.commitText(text, 1)
+            ic.endBatchEdit()
+        } catch (_: RuntimeException) {
+            // editor went away
+        }
+        return text
+    }
+
     /** Last [count] characters before the caret, or null when unavailable. */
     fun readTextBefore(ic: InputConnection, count: Int): String? = try {
         ic.getTextBeforeCursor(count, 0)?.toString()

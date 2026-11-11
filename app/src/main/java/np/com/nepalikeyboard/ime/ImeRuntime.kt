@@ -13,6 +13,8 @@ import np.com.nepalikeyboard.data.EmojiHistoryRepository
 import np.com.nepalikeyboard.data.LearningRepository
 import np.com.nepalikeyboard.data.SettingsRepository
 import np.com.nepalikeyboard.engine.Lexicon
+import np.com.nepalikeyboard.tlm.HybridEngine
+import np.com.nepalikeyboard.tlm.TlmLoader
 import np.com.nepalikeyboard.util.KeyboardLog
 
 /**
@@ -73,6 +75,39 @@ class ImeRuntime private constructor(
                 _lexiconReady.value = false
             } finally {
                 loading = false
+            }
+        }
+    }
+
+    /** On-device TinyLM engine (stage 1 transducer + stage 2 context scorer). Null until loaded. */
+    @Volatile
+    var tlm: HybridEngine? = null
+        private set
+
+    private val _tlmReady = MutableStateFlow(false)
+    val tlmReady: StateFlow<Boolean> = _tlmReady.asStateFlow()
+
+    @Volatile
+    private var tlmLoading = false
+
+    /** Loads the TinyLM models once, off the main thread. Safe to call on every keystroke. */
+    fun ensureTlm() {
+        if (tlm != null || tlmLoading) return
+        synchronized(loadingLock) {
+            if (tlm != null || tlmLoading) return
+            tlmLoading = true
+        }
+        scope.launch {
+            val started = android.os.SystemClock.elapsedRealtime()
+            try {
+                tlm = TlmLoader.load(context)
+                _tlmReady.value = true
+                KeyboardLog.d("TinyLM ready in ${android.os.SystemClock.elapsedRealtime() - started} ms")
+            } catch (error: Throwable) {
+                // Never take the keyboard down: the deterministic phonetic engine keeps working.
+                KeyboardLog.e("TinyLM load failed", error)
+            } finally {
+                tlmLoading = false
             }
         }
     }

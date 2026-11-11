@@ -73,6 +73,7 @@ internal class KeyboardController(
         scope = scope,
         learning = runtime.learning,
         lexiconProvider = { runtime.lexicon },
+        tlmProvider = { runtime.tlm },
         callback = this,
     )
 
@@ -120,6 +121,12 @@ internal class KeyboardController(
 
     init {
         runtime.ensureLexicon()
+        runtime.ensureTlm()
+        scope.launch {
+            runtime.tlmReady.collect { available ->
+                if (available) refreshCandidates()
+            }
+        }
         scope.launch {
             runtime.settings.snapshotState.collect { settings -> applySettings(settings) }
         }
@@ -461,9 +468,16 @@ internal class KeyboardController(
 
     private fun typePunctuation(text: String) {
         val ic = host.inputConnection ?: return
-        if (composer.hasRomanInput) commitRoman(ic, correctedWord = null)
-        composer.commitText(ic, text, addSpaceAfter = false, devanagariDigits = false)
+        val hadWord = composer.hasRomanInput
+        if (hadWord) commitRoman(ic, correctedWord = null)
+        val out = if (text == "." && mode == KeyboardMode.ROMAN && (hadWord || endsWithDevanagari(ic))) "\u0964" else text
+        composer.commitText(ic, out, addSpaceAfter = false, devanagariDigits = false)
         afterLiteralCommit(text)
+    }
+
+    private fun endsWithDevanagari(ic: InputConnection): Boolean {
+        val c = composer.readTextBefore(ic, 1)?.lastOrNull() ?: return false
+        return c in '\u0900'..'\u097F' && c != '\u0964'
     }
 
     /** Space: accept the current word, then insert a space. */
@@ -539,8 +553,13 @@ internal class KeyboardController(
         if (!composer.hasRomanInput) return ""
         val roman = composer.romanText()
         val transliteration = composer.previewTransliteration(snapshot.devanagariNumerals)
-        val payload = correctedWord ?: transliteration
-        composer.commitComposition(ic, payload)
+        val best = if (correctedWord == null) tlmBest(roman) else null
+        val payload = correctedWord ?: best?.text ?: transliteration
+        if (best?.joinPrev == true && snapshot.joinPadayog) {
+            composer.commitJoined(ic, payload)
+        } else {
+            composer.commitComposition(ic, payload)
+        }
         if (addSpaceAfter) {
             composer.commitText(ic, " ", addSpaceAfter = false, devanagariDigits = false)
         }
@@ -573,6 +592,7 @@ internal class KeyboardController(
      */
     private fun bestCommitForm(): String? {
         val editor = host.editorDescriptor
+        if (runtime.tlm != null && !editor.sensitive) return null
         if (editor.sensitive || !editor.autoCorrectAllowed) return null
         val transliteration = composer.previewTransliteration(snapshot.devanagariNumerals)
         if (transliteration.isEmpty()) return null
@@ -592,11 +612,48 @@ internal class KeyboardController(
         return null
     }
 
+    /** Text left of the caret (without our composing region); re-read only when a new word starts. */
+    private var leftCtx: String = ""
+
+    private fun leftContext(): String {
+        if (composer.romanLength > 1) return leftCtx
+        val ic = host.inputConnection ?: return ""
+        val before = composer.readTextBefore(ic, LEFT_CONTEXT_CHARS) ?: ""
+        leftCtx = if (composingPreview.isNotEmpty() && before.endsWith(composingPreview)) {
+            before.substring(0, before.length - composingPreview.length)
+        } else {
+            before
+        }
+        return leftCtx
+    }
+
+    /**
+     * The TinyLM pick for the roman buffer, computed synchronously (stage-1 results are cached, so this is
+     * the cheap stage-2 pass) so that Space always commits exactly what the strip's first chip shows.
+     */
+    private fun tlmBest(roman: String): Candidate? {
+        val tlm = runtime.tlm ?: return null
+        if (host.editorDescriptor.sensitive) return null
+        for (c in roman) if (!(c in 'a'..'z' || c in 'A'..'Z' || c == '\'')) return null
+        if (tlm.keepsLatin(roman)) return Candidate(text = roman, kind = CandidateKind.LITERAL)
+        return try {
+            val s = tlm.suggest(leftContext(), roman, 1)
+            val word = s.words.firstOrNull() ?: return null
+            Candidate(word, kind = CandidateKind.TRANSLITERATION, joinPrev = s.joins.firstOrNull() == true)
+        } catch (error: Throwable) {
+            null
+        }
+    }
+
     override fun onCandidateSelected(candidate: Candidate) {
         val ic = host.inputConnection ?: return
         if (composer.hasRomanInput) {
             val roman = composer.romanText()
-            composer.commitComposition(ic, candidate.text)
+            if (candidate.joinPrev && snapshot.joinPadayog) {
+                composer.commitJoined(ic, candidate.text)
+            } else {
+                composer.commitComposition(ic, candidate.text)
+            }
             val previous = lastCommittedWord
             learnWord(candidate.text, roman)
             if (previous != null && previous != candidate.text) {
@@ -772,6 +829,7 @@ internal class KeyboardController(
                 buffer = composer.romanText(),
                 previousWord = contextWordBeforeCaret(),
                 devanagariDigits = snapshot.devanagariNumerals,
+                leftContext = leftContext(),
             )
             publish()
             return
@@ -798,6 +856,14 @@ internal class KeyboardController(
         if (generation != this.generation) return
         this.candidates = candidates
         this.candidatesLoading = false
+        if (!predictionOnly && composer.hasRomanInput) {
+            val top = candidates.firstOrNull { it.kind == CandidateKind.TRANSLITERATION || it.kind == CandidateKind.LITERAL }
+            val ic = host.inputConnection
+            if (top != null && ic != null && top.kind == CandidateKind.TRANSLITERATION && top.text != composingPreview) {
+                // The model's pick replaces the instant deterministic preview inside the composing region.
+                if (composer.showComposing(ic, top.text)) composingPreview = top.text
+            }
+        }
         publish()
     }
 
@@ -1072,6 +1138,7 @@ internal class KeyboardController(
 
     private companion object {
         const val CONTEXT_LOOKBACK = 64
+        const val LEFT_CONTEXT_CHARS = 120
         const val PREFIX_LOOKBACK = 24
         const val PROMOTION_HITS = 2
         const val MIN_HEIGHT_SCALE = 0.7f

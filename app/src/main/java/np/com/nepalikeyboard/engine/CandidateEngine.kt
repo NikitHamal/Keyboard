@@ -7,6 +7,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import np.com.nepalikeyboard.data.LearningRepository
 import np.com.nepalikeyboard.engine.unicode.Devanagari
+import np.com.nepalikeyboard.tlm.HybridEngine
 
 /**
  * Asynchronous candidate pipeline.
@@ -30,6 +31,7 @@ class CandidateEngine(
     scope: CoroutineScope,
     private val learning: LearningRepository,
     private val lexiconProvider: () -> Lexicon?,
+    private val tlmProvider: () -> HybridEngine? = { null },
     private val callback: Callback,
 ) {
 
@@ -44,6 +46,7 @@ class CandidateEngine(
             val buffer: String,
             val previousWord: String?,
             val devanagariDigits: Boolean,
+            val leftContext: String,
         ) : Request
 
         data class Prediction(
@@ -72,6 +75,7 @@ class CandidateEngine(
         buffer: String,
         previousWord: String?,
         devanagariDigits: Boolean,
+        leftContext: String = "",
     ) {
         requests.trySend(
             Request.Roman(
@@ -79,6 +83,7 @@ class CandidateEngine(
                 buffer = buffer,
                 previousWord = previousWord,
                 devanagariDigits = devanagariDigits,
+                leftContext = leftContext,
             ),
         )
     }
@@ -107,6 +112,16 @@ class CandidateEngine(
     private fun handleRoman(request: Request.Roman): List<Candidate> {
         val buffer = request.buffer
         if (buffer.isEmpty()) return emptyList()
+
+        val tlm = tlmProvider()
+        if (tlm != null && isTlmWord(buffer)) {
+            try {
+                return handleTlm(tlm, request)
+            } catch (error: Throwable) {
+                // fall through to the deterministic path
+                np.com.nepalikeyboard.util.KeyboardLog.e("TinyLM suggest failed", error)
+            }
+        }
 
         val lexicon = lexiconProvider()
         val lowercase = PhoneticEngine.asciiLowercase(buffer)
@@ -188,6 +203,41 @@ class CandidateEngine(
             result += candidate
         }
         return result
+    }
+
+    private fun isTlmWord(buffer: String): Boolean {
+        for (c in buffer) if (!(c in 'a'..'z' || c in 'A'..'Z' || c == '\'')) return false
+        return buffer.length <= 34
+    }
+
+    /** TinyLM path: stage-1 ranked words, stage-2 context rerank, Padayog flags; literal chip last. */
+    private fun handleTlm(tlm: HybridEngine, request: Request.Roman): List<Candidate> {
+        val buffer = request.buffer
+        val suggestion = tlm.suggest(request.leftContext, buffer, MAX_CANDIDATES - 1)
+        val result = ArrayList<Candidate>(MAX_CANDIDATES)
+        val seen = HashSet<String>()
+        val keepLatin = tlm.keepsLatin(buffer)
+        if (keepLatin) result += Candidate(text = buffer, kind = CandidateKind.LITERAL, score = Int.MAX_VALUE)
+        for ((index, word) in suggestion.words.withIndex()) {
+            if (!seen.add(word)) continue
+            result += Candidate(
+                text = word,
+                hint = if (index == 0) buffer else null,
+                kind = if (index == 0) CandidateKind.TRANSLITERATION else CandidateKind.LEXICAL,
+                score = 10_000 - index,
+                joinPrev = suggestion.joins.getOrElse(index) { false },
+            )
+        }
+        // A word the user taught the keyboard for exactly this roman key goes right behind the top pick.
+        val lowercase = PhoneticEngine.asciiLowercase(buffer)
+        val personal = learning.personalState.value.firstOrNull {
+            it.roman.isNotEmpty() && it.roman.lowercase() == lowercase && it.word !in seen
+        }
+        if (personal != null) {
+            result.add(minOf(1, result.size), Candidate(text = personal.word, hint = personal.roman, kind = CandidateKind.PERSONAL, score = 9_000))
+        }
+        if (!keepLatin) result += Candidate(text = buffer, kind = CandidateKind.LITERAL, score = Int.MIN_VALUE)
+        return if (result.size > MAX_CANDIDATES) ArrayList(result.subList(0, MAX_CANDIDATES)) else result
     }
 
     private fun handlePrediction(request: Request.Prediction): List<Candidate> {

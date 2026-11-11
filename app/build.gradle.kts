@@ -106,6 +106,7 @@ android {
     // unused variants, and stable resource ids for the IME's baked-in layouts.
     androidResources {
         generateLocaleConfig = false
+        noCompress += listOf("onnx", "tsv")
     }
 }
 
@@ -140,6 +141,7 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.onnxruntime.android)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 

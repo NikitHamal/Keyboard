@@ -77,3 +77,8 @@
 -dontwarn org.jetbrains.annotations.**
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
+
+# ---- ONNX Runtime (JNI) + TinyLM engine ------------------------------------
+-keep class ai.onnxruntime.** { *; }
+-dontwarn ai.onnxruntime.**
+-keep class np.com.nepalikeyboard.tlm.** { *; }

@@ -42,6 +42,8 @@ class Candidate(
     val hint: String? = null,
     val kind: CandidateKind,
     val score: Int = 0,
+    /** Padayog: committing this chip removes the space before it and glues it to the previous word. */
+    val joinPrev: Boolean = false,
 ) {
     val usesDevanagari: Boolean = text.any { Devanagari.isDevanagariBlock(it) }
 

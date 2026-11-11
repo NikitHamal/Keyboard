@@ -209,4 +209,6 @@
     <string name="common_save">Save</string>
     <string name="common_close">Close</string>
     <string name="common_default">Default</string>
+    <string name="setting_join_padayog">Join postpositions (padayog)</string>
+    <string name="setting_join_padayog_desc">Type “ram ko” and get रामको - को, मा, ले, बाट, लाई … attach to the word before them</string>
 </resources>
