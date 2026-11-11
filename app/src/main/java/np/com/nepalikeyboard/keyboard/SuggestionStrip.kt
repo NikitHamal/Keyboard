@@ -5,14 +5,18 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Link
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -33,16 +37,12 @@ import np.com.nepalikeyboard.ui.theme.devanagariStyle
 import np.com.nepalikeyboard.ui.theme.latinStyle
 
 /**
- * Candidate chips.
+ * Suggestion strip, Gboard style with Material 3 Expressive accents.
  *
- * Ordering is decided by `CandidateEngine` and never re-sorted here: the literal
- * roman input sits first, then the deterministic transliteration, then lexical
- * and statistical alternatives. Tapping a chip commits exactly its `text`.
- *
- * Three states are rendered instead of a list when there is nothing to offer:
- * the secure-field hint, the live transliteration preview (so a user typing
- * romanized Nepali always sees what the engine would insert, even with
- * suggestions switched off), and an empty spacer.
+ * Ordering is decided by the engine and never re-sorted here: the TinyLM pick comes first and is
+ * drawn as a filled stadium chip, alternatives follow as quiet text separated by hairlines, and the
+ * literal Latin input is last. A chain icon marks a chip that will be glued to the previous word
+ * (padayog). Tapping a chip commits exactly its `text`.
  */
 @Composable
 fun SuggestionStrip(
@@ -60,35 +60,58 @@ fun SuggestionStrip(
         val preview = state.composingPreview
         if (preview.isNotEmpty()) {
             Box(
-                modifier = modifier.padding(horizontal = tokens.sidePadding + 6.dp),
+                modifier = modifier.padding(horizontal = 4.dp),
                 contentAlignment = Alignment.CenterStart,
             ) {
-                Text(
-                    text = preview,
-                    style = devanagariStyle(20.sp, FontWeight.SemiBold),
-                    color = tokens.suggestionText,
-                    maxLines = 1,
-                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(tokens.suggestionChipSelected)
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                ) {
+                    Text(
+                        text = preview,
+                        style = devanagariStyle(20.sp, FontWeight.SemiBold),
+                        color = tokens.suggestionChipSelectedText,
+                        maxLines = 1,
+                    )
+                }
             }
         } else {
             Box(modifier)
         }
         return
     }
-
+    val primaryIndex = if (candidates.size > 1 &&
+        candidates[0].kind == CandidateKind.LITERAL &&
+        candidates[1].kind == CandidateKind.TRANSLITERATION
+    ) {
+        1
+    } else {
+        0
+    }
     Row(
         modifier = modifier
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = tokens.sidePadding, vertical = 3.dp),
-        horizontalArrangement = Arrangement.spacedBy(3.dp),
+            .padding(horizontal = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         for (index in candidates.indices) {
+            val candidate = candidates[index]
+            if (index > 0 && index != primaryIndex && index - 1 != primaryIndex) {
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .size(width = 1.dp, height = 18.dp)
+                        .background(tokens.divider),
+                )
+            }
             CandidateChip(
-                candidate = candidates[index],
-                primary = index == 1,
+                candidate = candidate,
+                primary = index == primaryIndex && candidate.kind != CandidateKind.LITERAL,
                 tokens = tokens,
-                onClick = { sink.onCandidateSelected(candidates[index]) },
+                onClick = { sink.onCandidateSelected(candidate) },
             )
         }
     }
@@ -102,44 +125,43 @@ private fun CandidateChip(
     onClick: () -> Unit,
 ) {
     val literal = candidate.kind == CandidateKind.LITERAL
-    val background = when {
-        primary && !literal -> tokens.suggestionChipSelected
-        else -> tokens.suggestionChip
+    val labelColor = when {
+        primary -> tokens.suggestionChipSelectedText
+        literal -> tokens.iconTint
+        else -> tokens.suggestionText
     }
-    val labelColor = if (primary && !literal) tokens.suggestionChipSelectedText else tokens.suggestionText
-    val hintColor = if (primary && !literal) tokens.suggestionChipSelectedText else tokens.iconTint
     val labelStyle = if (candidate.usesDevanagari) {
-        devanagariStyle(17.sp, if (primary) FontWeight.SemiBold else FontWeight.Medium)
+        devanagariStyle(if (primary) 19.sp else 18.sp, if (primary) FontWeight.SemiBold else FontWeight.Normal)
     } else {
-        latinStyle(14.sp, if (primary) FontWeight.SemiBold else FontWeight.Medium)
+        latinStyle(15.sp, if (primary) FontWeight.SemiBold else FontWeight.Medium)
     }
-
     Box(
         modifier = Modifier
             .fillMaxHeight()
+            .padding(vertical = 3.dp)
             .widthIn(min = 44.dp)
-            .clip(RoundedCornerShape(tokens.functionCornerRadius))
-            .background(background)
+            .clip(RoundedCornerShape(50))
+            .background(if (primary) tokens.suggestionChipSelected else androidx.compose.ui.graphics.Color.Transparent)
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 2.dp),
+            .padding(horizontal = if (primary) 16.dp else 12.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (candidate.joinPrev) {
+                Icon(
+                    imageVector = Icons.Filled.Link,
+                    contentDescription = null,
+                    tint = labelColor,
+                    modifier = Modifier.size(13.dp),
+                )
+                Box(Modifier.width(3.dp))
+            }
             Text(
                 text = candidate.display,
                 style = labelStyle,
                 color = labelColor,
                 maxLines = 1,
             )
-            val hint = candidate.hint
-            if (hint != null && hint != candidate.display) {
-                Text(
-                    text = hint,
-                    style = latinStyle(10.sp),
-                    color = hintColor,
-                    maxLines = 1,
-                )
-            }
         }
     }
 }

@@ -1,6 +1,22 @@
 package np.com.nepalikeyboard.keyboard
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
+import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -61,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.abs
 import kotlinx.coroutines.withTimeoutOrNull
+import np.com.nepalikeyboard.R
 import np.com.nepalikeyboard.engine.unicode.Devanagari
 import np.com.nepalikeyboard.ime.ImePanel
 import np.com.nepalikeyboard.ime.KeyboardActionSink
@@ -182,6 +199,20 @@ fun KeyboardSurface(
                 actionLabel = actionLabel,
                 scriptLabel = scriptLabel,
             )
+
+            val pressedIdx = interaction.pressedIndex
+            val pressedKey = layout.keyAt(pressedIdx)
+            if (pressedKey != null && pressedKey.kind == KeyKind.CHARACTER && pressedKey.label.isNotEmpty() &&
+                interaction.longPressKey == null
+            ) {
+                KeyPreviewBubble(
+                    key = pressedKey,
+                    index = pressedIdx,
+                    geometry = geometry,
+                    tokens = tokens,
+                    labelSize = labelSize,
+                )
+            }
         }
 
         val heldKey = interaction.longPressKey
@@ -301,21 +332,45 @@ private fun KeyCap(
         label = "keyScale",
     )
 
+    val isEnter = key.kind == KeyKind.ENTER
+    val isSpace = key.kind == KeyKind.SPACE
     val functionKey = key.kind != KeyKind.CHARACTER &&
-        key.kind != KeyKind.COMMA && key.kind != KeyKind.PERIOD
+        key.kind != KeyKind.COMMA && key.kind != KeyKind.PERIOD && !isSpace
+
+    // M3 Expressive shape morph: keys relax towards a rounder silhouette while held, the Enter key
+    // is a stadium that squares up under the finger.
+    val restRadius = when {
+        isEnter -> tokens.functionCornerRadius * 1.9f
+        isSpace -> tokens.functionCornerRadius * 1.5f
+        functionKey -> tokens.functionCornerRadius
+        else -> tokens.keyCornerRadius
+    }
+    val pressedRadius = when {
+        isEnter -> tokens.functionCornerRadius
+        else -> restRadius * 1.7f
+    }
+    val radius by animateDpAsState(
+        targetValue = if (pressed) pressedRadius else restRadius,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow),
+        label = "keyRadius",
+    )
 
     val background = when {
-        key.kind == KeyKind.SPACE || key.kind == KeyKind.ENTER ->
-            if (pressed) tokens.accentKeyPressed else tokens.accentKeyBackground
-
+        isEnter -> if (pressed) tokens.enterPressed else tokens.enterBackground
         functionKey -> if (pressed) tokens.functionKeyPressed else tokens.functionKeyBackground
         else -> if (pressed) tokens.keyBackgroundPressed else tokens.keyBackground
     }
 
     val labelColor = when {
-        key.kind == KeyKind.SPACE || key.kind == KeyKind.ENTER -> tokens.accentKeyLabel
+        isEnter -> tokens.enterLabel
         functionKey -> tokens.functionKeyLabel
         else -> tokens.keyLabel
+    }
+
+    val hint = if (key.kind == KeyKind.CHARACTER && key.labelStyle != KeyLabelStyle.DEVANAGARI) {
+        key.longPress.firstOrNull()?.takeIf { it.length <= 2 && !it[0].isLetter() }
+    } else {
+        null
     }
 
     val gap = tokens.keyGap / 2
@@ -325,15 +380,7 @@ private fun KeyCap(
             .padding(horizontal = gap, vertical = gap)
             .fillMaxSize()
             .scale(scale)
-            .clip(
-                RoundedCornerShape(
-                    if (key.kind == KeyKind.SPACE || key.kind == KeyKind.ENTER) {
-                        tokens.functionCornerRadius
-                    } else {
-                        tokens.keyCornerRadius
-                    },
-                ),
-            )
+            .clip(RoundedCornerShape(radius))
             .background(if (gliding) tokens.accentKeyBackground else background)
             .semantics { contentDescription = keyAccessibilityLabel(key, actionLabel, scriptLabel) },
         contentAlignment = Alignment.Center,
@@ -345,6 +392,72 @@ private fun KeyCap(
             actionLabel = actionLabel,
             scriptLabel = scriptLabel,
             color = labelColor,
+        )
+        if (hint != null) {
+            Text(
+                text = hint,
+                style = latinStyle((labelSize.value * 0.46f).coerceAtLeast(8f).sp, FontWeight.Medium),
+                color = tokens.functionKeyLabel.copy(alpha = 0.75f),
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 2.dp, end = 5.dp),
+                softWrap = false,
+                maxLines = 1,
+            )
+        }
+    }
+}
+
+/** The floating glyph bubble Gboard shows above a pressed key. It may overlap the strip above. */
+@Composable
+private fun KeyPreviewBubble(
+    key: KeyDef,
+    index: Int,
+    geometry: KeyboardGeometry,
+    tokens: KeyboardTokens,
+    labelSize: TextUnit,
+) {
+    val density = LocalDensity.current
+    val grow = remember(index) { Animatable(0.78f) }
+    LaunchedEffect(index) {
+        grow.animateTo(1f, spring(dampingRatio = 0.55f, stiffness = Spring.StiffnessMedium))
+    }
+    val keyW = geometry.width(index)
+    val keyH = geometry.height(index)
+    if (keyW <= 0 || keyH <= 0) return
+    val bubbleW = (keyW * 1.5f).toInt()
+    val bubbleH = (keyH * 1.3f).toInt()
+    val maxX = (geometry.widthPx - bubbleW).coerceAtLeast(0)
+    val x = (geometry.left(index) + keyW / 2 - bubbleW / 2).coerceIn(0, maxX)
+    val y = geometry.top(index) - bubbleH + (keyH * 0.12f).toInt()
+    val shape = RoundedCornerShape(tokens.functionCornerRadius * 1.4f)
+    val devanagari = key.labelStyle == KeyLabelStyle.DEVANAGARI || containsDevanagari(key.label)
+    Box(
+        modifier = Modifier
+            .offset { IntOffset(x, y) }
+            .width(with(density) { bubbleW.toDp() })
+            .height(with(density) { bubbleH.toDp() })
+            .graphicsLayer {
+                scaleX = grow.value
+                scaleY = grow.value
+                transformOrigin = TransformOrigin(0.5f, 1f)
+            }
+            .shadow(6.dp, shape)
+            .clip(shape)
+            .background(tokens.previewBackground),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = key.label,
+            style = if (devanagari) {
+                devanagariStyle(labelSize * 1.45f, FontWeight.Medium)
+            } else {
+                latinStyle(labelSize * 1.5f, FontWeight.Medium)
+            },
+            color = tokens.previewLabel,
+            softWrap = false,
+            maxLines = 1,
+            overflow = TextOverflow.Visible,
         )
     }
 }
@@ -396,14 +509,28 @@ private fun KeyContent(
             overflow = TextOverflow.Ellipsis,
         )
 
-        KeyKind.ENTER -> Text(
-            text = actionLabel,
-            style = latinStyle(actionSize * 1.2f, FontWeight.SemiBold),
-            color = color,
-            softWrap = false,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        KeyKind.ENTER -> {
+            val icon = when (actionLabel) {
+                stringResource(R.string.action_search) -> Icons.Filled.Search
+                stringResource(R.string.action_send) -> Icons.AutoMirrored.Filled.Send
+                stringResource(R.string.action_go), stringResource(R.string.action_next) -> Icons.AutoMirrored.Filled.ArrowForward
+                stringResource(R.string.action_done) -> Icons.Filled.Check
+                stringResource(R.string.action_default), stringResource(R.string.action_none) -> Icons.AutoMirrored.Filled.KeyboardReturn
+                else -> null
+            }
+            if (icon != null) {
+                KeyIcon(icon = icon, color = color, labelSize = labelSize)
+            } else {
+                Text(
+                    text = actionLabel,
+                    style = latinStyle(actionSize * 1.2f, FontWeight.SemiBold),
+                    color = color,
+                    softWrap = false,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
 
         KeyKind.SHIFT -> KeyIcon(
             // `KeyboardCapslock` is the shift glyph in the *core* Material icons

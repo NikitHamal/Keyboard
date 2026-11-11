@@ -69,12 +69,17 @@ data class KeyboardTokens(
     val stripHeight: Dp,
     val toolbarHeight: Dp,
     val keyLabelSizeScale: Float = 1.0f,
+    val enterBackground: Color = Color.Unspecified,
+    val enterPressed: Color = Color.Unspecified,
+    val enterLabel: Color = Color.Unspecified,
+    val previewBackground: Color = Color.Unspecified,
+    val previewLabel: Color = Color.Unspecified,
 )
 
-private val BaseKeyRadius = 7.dp
-private val BaseFunctionRadius = 12.dp
-private val BaseKeyGap = 5.dp
-private val BaseSidePadding = 4.dp
+private val BaseKeyRadius = 10.dp
+private val BaseFunctionRadius = 14.dp
+private val BaseKeyGap = 6.dp
+private val BaseSidePadding = 3.dp
 
 /** Fallback tokens used before the theme is applied (previews, tests). */
 fun defaultKeyboardTokens(scheme: ColorScheme = schemeFrom(HimalayaPalette, dark = false)): KeyboardTokens =
@@ -108,10 +113,15 @@ private fun buildTokens(scheme: ColorScheme, roundnessScale: Float): KeyboardTok
         functionCornerRadius = fnRadius,
         keyGap = BaseKeyGap,
         sidePadding = BaseSidePadding,
-        keyPressedScale = 0.94f,
+        keyPressedScale = 0.95f,
         keyShadowElevation = 1.dp,
-        stripHeight = 44.dp,
-        toolbarHeight = 36.dp,
+        stripHeight = 48.dp,
+        toolbarHeight = 40.dp,
+        enterBackground = scheme.primary,
+        enterPressed = lerp(scheme.primary, scheme.onPrimary, 0.18f),
+        enterLabel = scheme.onPrimary,
+        previewBackground = scheme.surfaceContainerHighest,
+        previewLabel = scheme.onSurface,
     )
 }
 
@@ -151,11 +161,11 @@ object ExpressiveMotion {
 
 /** Expressive shape scale: generous radii, softened corners on large surfaces. */
 val ExpressiveShapes: Shapes = Shapes(
-    extraSmall = RoundedCornerShape(6.dp),
-    small = RoundedCornerShape(11.dp),
-    medium = RoundedCornerShape(16.dp),
-    large = RoundedCornerShape(22.dp),
-    extraLarge = RoundedCornerShape(30.dp),
+    extraSmall = RoundedCornerShape(8.dp),
+    small = RoundedCornerShape(14.dp),
+    medium = RoundedCornerShape(20.dp),
+    large = RoundedCornerShape(28.dp),
+    extraLarge = RoundedCornerShape(40.dp),
 )
 
 /**

@@ -1,6 +1,23 @@
 package np.com.nepalikeyboard.keyboard
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.rotate
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -113,27 +130,14 @@ fun KeyboardHost(
         // Both rows are settings-controlled. Hiding the strip is how a user turns
         // suggestions off; hiding the toolbar hands every secondary action back to
         // the settings app. Neither row leaves a gap when it is off.
-        Column(modifier = Modifier.fillMaxWidth()) {
-            if (state.suggestionsVisible || state.isSecure) {
-                SuggestionStrip(
-                    state = state,
-                    sink = sink,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(tokens.stripHeight),
-                )
-            }
-            if (state.toolbarVisible) {
-                KeyboardToolbar(
-                    state = state,
-                    sink = sink,
-                    scriptLabel = scriptLabel,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(tokens.toolbarHeight),
-                )
-            }
-        }
+        TopBar(
+            state = state,
+            sink = sink,
+            scriptLabel = scriptLabel,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(tokens.stripHeight),
+        )
 
         Box(
             modifier = Modifier
@@ -200,6 +204,82 @@ fun KeyboardHost(
 // Toolbar
 // ---------------------------------------------------------------------------
 
+/**
+ * One Gboard-style bar: a round toggle on the left swaps the suggestion strip for the tool row and
+ * back. Typing collapses the tools again so suggestions are never hidden while composing.
+ */
+@Composable
+private fun TopBar(
+    state: ImeUiState,
+    sink: KeyboardActionSink,
+    scriptLabel: String,
+    modifier: Modifier = Modifier,
+) {
+    val tokens = LocalKeyboardTokens.current
+    var expanded by remember { mutableStateOf(false) }
+    val showStrip = state.suggestionsVisible || state.isSecure
+    val canToggle = state.toolbarVisible && showStrip
+    val toolsShown = state.toolbarVisible && (expanded || !showStrip)
+    val typing = state.romanBuffer.isNotEmpty()
+    LaunchedEffect(typing) { if (typing) expanded = false }
+    val rotation by animateFloatAsState(
+        targetValue = if (toolsShown) 180f else 0f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMediumLow),
+        label = "toolbarToggle",
+    )
+    Row(
+        modifier = modifier.padding(horizontal = tokens.sidePadding + 2.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (canToggle) {
+            Box(
+                modifier = Modifier
+                    .size(tokens.stripHeight - 8.dp)
+                    .clip(CircleShape)
+                    .background(tokens.functionKeyBackground)
+                    .clickable { expanded = !expanded }
+                    .semantics { contentDescription = "Tools" },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ChevronRight,
+                    contentDescription = null,
+                    tint = tokens.iconTint,
+                    modifier = Modifier
+                        .size(22.dp)
+                        .rotate(rotation),
+                )
+            }
+            Box(Modifier.size(width = 6.dp, height = 1.dp))
+        }
+        Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            AnimatedContent(
+                targetState = toolsShown,
+                transitionSpec = {
+                    (fadeIn(tween(160)) + slideInHorizontally(tween(220)) { if (targetState) it / 5 else -it / 5 })
+                        .togetherWith(fadeOut(tween(110)) + slideOutHorizontally(tween(160)) { if (targetState) -it / 5 else it / 5 })
+                },
+                label = "topBarContent",
+            ) { tools ->
+                if (tools) {
+                    KeyboardToolbar(
+                        state = state,
+                        sink = sink,
+                        scriptLabel = scriptLabel,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                } else {
+                    SuggestionStrip(
+                        state = state,
+                        sink = sink,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun KeyboardToolbar(
     state: ImeUiState,
@@ -209,9 +289,9 @@ private fun KeyboardToolbar(
 ) {
     val tokens = LocalKeyboardTokens.current
     Row(
-        modifier = modifier.padding(horizontal = tokens.sidePadding),
+        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
         ToolbarTextButton(
             label = scriptLabel,
@@ -219,7 +299,18 @@ private fun KeyboardToolbar(
             tokens = tokens,
             onClick = { sink.onCycleModeRequested() },
         )
-        Spacer(Modifier.weight(1f))
+        ToolbarIconButton(
+            icon = Icons.Filled.EmojiEmotions,
+            description = stringResource(R.string.key_emoji),
+            tokens = tokens,
+            onClick = { sink.onPanelRequested(ImePanel.EMOJI) },
+        )
+        ToolbarIconButton(
+            icon = Icons.Filled.ContentPaste,
+            description = stringResource(R.string.key_clipboard),
+            tokens = tokens,
+            onClick = { sink.onPanelRequested(ImePanel.CLIPBOARD) },
+        )
         ToolbarIconButton(
             icon = Icons.Filled.Tune,
             description = stringResource(R.string.layout_sheet_title),
@@ -241,18 +332,6 @@ private fun KeyboardToolbar(
                 onClick = { sink.onOneHandedChanged(OneHandedSide.OFF) },
             )
         }
-        ToolbarIconButton(
-            icon = Icons.Filled.EmojiEmotions,
-            description = stringResource(R.string.key_emoji),
-            tokens = tokens,
-            onClick = { sink.onPanelRequested(ImePanel.EMOJI) },
-        )
-        ToolbarIconButton(
-            icon = Icons.Filled.ContentPaste,
-            description = stringResource(R.string.key_clipboard),
-            tokens = tokens,
-            onClick = { sink.onPanelRequested(ImePanel.CLIPBOARD) },
-        )
         ToolbarIconButton(
             icon = Icons.Filled.Settings,
             description = stringResource(R.string.key_settings),
@@ -277,17 +356,18 @@ private fun ToolbarTextButton(
 ) {
     Box(
         modifier = Modifier
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(tokens.keyCornerRadius))
+            .height(34.dp)
+            .clip(CircleShape)
+            .background(tokens.suggestionChipSelected)
             .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp)
+            .padding(horizontal = 14.dp)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
             style = latinStyle(12.sp, FontWeight.SemiBold),
-            color = tokens.iconTintActive,
+            color = tokens.suggestionChipSelectedText,
             maxLines = 1,
         )
     }
@@ -302,8 +382,8 @@ private fun ToolbarIconButton(
 ) {
     Box(
         modifier = Modifier
-            .size(tokens.toolbarHeight - 6.dp)
-            .clip(RoundedCornerShape(tokens.keyCornerRadius))
+            .size(tokens.toolbarHeight - 2.dp)
+            .clip(CircleShape)
             .clickable(onClick = onClick)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
@@ -312,7 +392,7 @@ private fun ToolbarIconButton(
             imageVector = icon,
             contentDescription = null,
             tint = tokens.iconTint,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(21.dp),
         )
     }
 }
