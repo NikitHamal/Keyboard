@@ -126,6 +126,10 @@ internal class KeyboardController(
      */
     private var leftCtx: String = ""
 
+    /** The roman buffer and generation of the last request handed to the model worker (for the Space commit). */
+    private var submittedRoman: String = ""
+    private var submittedGeneration = 0L
+
     init {
         runtime.ensureLexicon()
         runtime.ensureTlm()
@@ -278,6 +282,7 @@ internal class KeyboardController(
         composingStart: Int,
         composingEnd: Int,
     ) {
+        composer.noteSelectionUpdate()
         val dropped = composer.reconcileSelection(
             composingStart = composingStart,
             composingEnd = composingEnd,
@@ -469,7 +474,7 @@ internal class KeyboardController(
         val preview = composer.typeRoman(ic, text, snapshot.devanagariNumerals)
         composingPreview = preview ?: composer.previewTransliteration(snapshot.devanagariNumerals)
         if (shift == ShiftState.AUTO || shift == ShiftState.ON) shift = ShiftState.OFF
-        publish()
+        // refreshCandidates() submits the model request first and publishes the UI state once.
         refreshCandidates()
     }
 
@@ -502,10 +507,7 @@ internal class KeyboardController(
             if (before != null && before.length == 2 && before[1] == ' ' &&
                 before[0] in '\u0900'..'\u097F' && before[0] != '\u0964'
             ) {
-                try {
-                    ic.deleteSurroundingText(1, 0)
-                } catch (_: RuntimeException) {
-                }
+                composer.deleteBefore(ic, 1)
                 composer.commitText(ic, "\u0964 ", addSpaceAfter = false, devanagariDigits = false)
                 lastCommittedWord = null
                 updateShiftAfterEdit()
@@ -529,6 +531,7 @@ internal class KeyboardController(
             composer.commitText(ic, "\n", addSpaceAfter = false, devanagariDigits = false)
             lastCommittedWord = null
         } else {
+            composer.invalidateMirror()
             host.performEditorAction()
         }
         updateShiftAfterEdit()
@@ -578,7 +581,8 @@ internal class KeyboardController(
         val roman = composer.romanText()
         val transliteration = composer.previewTransliteration(snapshot.devanagariNumerals)
         val best = if (correctedWord == null) tlmBest(roman) else null
-        val payload = correctedWord ?: best?.text ?: transliteration
+        // Fallback is exactly what is on screen (WYSIWYG), never a silently different spelling.
+        val payload = correctedWord ?: best?.text ?: composer.composingFieldText(transliteration)
         if (best?.joinPrev == true && snapshot.joinPadayog) {
             composer.commitJoined(ic, payload)
         } else {
@@ -636,35 +640,27 @@ internal class KeyboardController(
         return null
     }
 
+    /** Text before the caret outside our composing region, from the editor mirror (no binder round trip). */
     private fun leftContext(): String {
-        if (composer.romanLength > 1) return leftCtx
         val ic = host.inputConnection ?: return ""
-        val before = composer.readTextBefore(ic, LEFT_CONTEXT_CHARS) ?: ""
-        val field = composer.composingFieldText(composingPreview)
-        leftCtx = if (field.isNotEmpty() && before.endsWith(field)) {
-            before.substring(0, before.length - field.length)
-        } else {
-            before
-        }
-        return leftCtx
+        return composer.leftContextText(ic, LEFT_CONTEXT_CHARS)
     }
 
     /**
-     * The TinyLM pick for the roman buffer, computed synchronously (stage-1 results are cached, so this is
-     * the cheap stage-2 pass) so that Space always commits exactly what the strip's first chip shows.
+     * The TinyLM pick for the roman buffer, so that Space commits exactly what the strip's first chip shows.
+     *
+     * Never calls the model on the main thread (the engine is single-flight and may be busy with the previous
+     * keystroke): it reads the result the worker already published for the current request, waiting at most
+     * [SPACE_WAIT_MS] for it. On a timeout the caller commits the text that is on screen.
      */
     private fun tlmBest(roman: String): Candidate? {
         val tlm = runtime.tlm ?: return null
         if (host.editorDescriptor.sensitive) return null
         for (c in roman) if (!(c in 'a'..'z' || c in 'A'..'Z' || c == '\'')) return null
         if (tlm.keepsLatin(roman)) return Candidate(text = roman, kind = CandidateKind.LITERAL)
-        return try {
-            val s = tlm.suggest(leftContext(), roman, 1)
-            val word = s.words.firstOrNull() ?: return null
-            Candidate(word, kind = CandidateKind.TRANSLITERATION, joinPrev = s.joins.firstOrNull() == true)
-        } catch (error: Throwable) {
-            null
-        }
+        if (submittedRoman != roman || submittedGeneration != generation) return null
+        val list = engine.awaitPublished(submittedGeneration, SPACE_WAIT_MS) ?: return null
+        return list.firstOrNull { it.kind == CandidateKind.TRANSLITERATION }
     }
 
     override fun onCandidateSelected(candidate: Candidate) {
@@ -846,7 +842,10 @@ internal class KeyboardController(
      */
     private fun refreshCandidates() {
         val editor = host.editorDescriptor
-        if (editor.sensitive || !snapshot.showSuggestions) {
+        val romanComposing = composer.hasRomanInput && !editor.sensitive
+        // Hidden suggestion strip still runs the model for the word being typed: the composing text is upgraded to the
+        // TinyLM spelling and Space commits it.
+        if (editor.sensitive || (!snapshot.showSuggestions && !romanComposing)) {
             generation++
             candidates = emptyList()
             candidatesLoading = false
@@ -856,11 +855,14 @@ internal class KeyboardController(
         generation++
         val request = generation
 
-        if (composer.hasRomanInput) {
+        if (romanComposing) {
             candidatesLoading = true
+            val roman = composer.romanText()
+            submittedRoman = roman
+            submittedGeneration = request
             engine.submitRoman(
                 generation = request,
-                buffer = composer.romanText(),
+                buffer = roman,
                 previousWord = contextWordBeforeCaret(),
                 devanagariDigits = snapshot.devanagariNumerals,
                 leftContext = leftContext(),
@@ -909,15 +911,9 @@ internal class KeyboardController(
     private fun contextWordBeforeCaret(): String? {
         lastCommittedWord?.let { return it }
         val ic = host.inputConnection ?: return null
-        val before = composer.readTextBefore(ic, CONTEXT_LOOKBACK) ?: return null
+        val before = composer.leftContextText(ic, CONTEXT_LOOKBACK)
         if (before.isEmpty()) return null
-        val field = composer.composingFieldText(composingPreview)
-        val stripped = if (field.isNotEmpty() && before.endsWith(field)) {
-            before.substring(0, before.length - field.length)
-        } else {
-            before
-        }
-        return composer.trailingWord(stripped)
+        return composer.trailingWord(before)
     }
 
     /** The run of word characters immediately left of the caret, capped. */
@@ -1173,6 +1169,7 @@ internal class KeyboardController(
     private companion object {
         const val CONTEXT_LOOKBACK = 64
         const val LEFT_CONTEXT_CHARS = 120
+        const val SPACE_WAIT_MS = 45L
         const val PREFIX_LOOKBACK = 24
         const val PROMOTION_HITS = 2
         const val MIN_HEIGHT_SCALE = 0.7f

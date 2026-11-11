@@ -283,6 +283,7 @@ private fun HomeScreen(writer: SettingsWriter) {
     val tlmReady by runtime.tlmReady.collectAsStateWithLifecycle()
     val lexReady by runtime.lexiconReady.collectAsStateWithLifecycle()
     var learned by remember { mutableIntStateOf(0) }
+    var latency by remember { mutableStateOf<String?>(null) }
     var tryText by rememberSaveable { mutableStateOf("") }
 
     LaunchedEffect(Unit) {
@@ -294,7 +295,8 @@ private fun HomeScreen(writer: SettingsWriter) {
             } catch (_: Throwable) {
                 0
             }
-            delay(2000)
+            latency = np.com.nepalikeyboard.util.TlmStats.summary()
+            delay(1000)
         }
     }
     LaunchedEffect(status.ready) { if (status.ready) writer.setOnboardingCompleted(true) }
@@ -355,6 +357,14 @@ private fun HomeScreen(writer: SettingsWriter) {
             SettingsCard {
                 Column {
                     Text("On-device, offline, private", style = latinStyle(15.5.sp, FontWeight.Medium), color = scheme.onSurface)
+                    latency?.let {
+                        Text(
+                            "Keystroke latency: $it",
+                            style = latinStyle(12.5.sp, FontWeight.Medium),
+                            color = scheme.primary,
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
+                    }
                     Text(
                         "A two-stage tiny language model (character transducer + sentence-context scorer) runs on your phone - 2.5 M parameters, no network permission, nothing leaves the keyboard.",
                         style = latinStyle(12.5.sp),

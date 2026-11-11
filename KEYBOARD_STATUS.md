@@ -35,3 +35,35 @@ Assets track `NikitHamal/transliterationlm` artifacts (read-only upstream; model
 ## Next ideas
 - Byakaran (grammar) chip in the strip from the sentence layer.
 - Per-key long-press hints for the Devanagari layout; trackpad scrub haptics tuning.
+
+
+## Session: realtime typing pass (latency + upstream sync)
+Upstream `transliterationlm` @ 106e9a0: assets (`lex_ne.tsv`, `direct_ne.tsv`, config, vocab, ctx vocab) were already identical;
+the engine rules were not. Ported into `tlm/TlmEngine.kt`: sorry/सरी, उन्छु->उँछु, काठमाडौँ direct fix, पानी/पनि and बुबा
+clause rules, छु/ला bias, short-nasal penalty, ब/व guard, extra honorific verbs, ctx skip for k/baba/paani.
+
+Measured with the JVM harness (`tools/tlm_jvm_check/LatencyBench.kt`, 2 vCPU x86, warm): per-keystroke rank went from
+~19.6 ms avg (77 ms max) to ~7 ms avg / 13 ms p90 with byte-identical output on 1200 roman inputs x 5 contexts
+(`Parity.kt`: diff of old vs new engine = 0 lines).
+
+Engine (`tlm/TlmNet.kt`): 4-accumulator matvec, table GELU, allocation-free decoder step with per-thread scratch,
+candidate scoring split across up to 3 helper threads (own KV cache each), allocation-free beam search, context scorer skips
+padding rows, cancellable beam (`TlmStale`), deep request reuses a shallow result when no beam was needed, Keys without
+per-word Regex compilation (lexicon load ~2x faster), common-word warm-up on a background thread (`TlmLoader.warmup`).
+
+Android pipeline:
+- `CandidateEngine`: dedicated display-priority worker (`util/WorkerThreads`), results posted to main with a Handler (the
+  worker never waits for the UI), beam search aborts when a newer key arrives, `awaitPublished()` for Space.
+- Space never runs the model on the main thread any more (it used to block on the engine lock): it takes the worker's result
+  for the current word (<=45 ms wait) and otherwise commits exactly what is on screen.
+- `CompositionController` keeps a mirror of the text left of the caret, so `getTextBeforeCursor` (blocking binder call) is no
+  longer made on word starts, shift refresh, backspace or prediction. Invalidated on focus change, caret jump, Enter action.
+- Backspace inside a word re-shows the model spelling already computed for that prefix on the same frame.
+- One UI state publish per key instead of two; suggestion strip hidden no longer disables model upgrade of the composing word.
+- Settings Home shows rolling keystroke latency (`util/TlmStats`).
+- New launcher icon: crimson flat field, cream keycap with real Noto Sans Devanagari na outline in front of a saffron keycap with
+  Outfit "a" (glyphs cut out with even-odd fill, themed monochrome layer uses the same geometry).
+
+## Next ideas
+- On-device check of p95 latency (Home -> Engine card). If still high on low-end devices lower `TlmTuning.maxHelperThreads`.
+- Baseline profile for the inference kernels.

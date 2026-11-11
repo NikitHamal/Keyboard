@@ -1,5 +1,6 @@
 package np.com.nepalikeyboard.ime
 
+import android.os.SystemClock
 import android.view.inputmethod.ExtractedTextRequest
 import android.view.inputmethod.InputConnection
 import np.com.nepalikeyboard.engine.PhoneticEngine
@@ -59,6 +60,75 @@ internal class CompositionController(private val host: ImeHost) {
 
     private var composingActive = false
 
+    // -----------------------------------------------------------------------
+    // Left-of-caret text mirror
+    // -----------------------------------------------------------------------
+    //
+    // `getTextBeforeCursor` is a *blocking* binder call into the app being typed in; on a busy editor (WebView,
+    // chat apps, big documents) it routinely takes 5-50 ms and it used to run on every word start, every shift
+    // refresh and every backspace. All writes go through this class, so it keeps a mirror of the text before the
+    // caret (excluding our composing region) and serves every read from memory. The mirror is filled by one real
+    // read, kept in sync by our own edits, and dropped whenever the editor might have changed behind our back
+    // (focus change, caret moved by the user, composition dropped, Enter action, cursor glide).
+    private val leftMirror = StringBuilder(MIRROR_MAX * 2)
+    private var mirrorValid = false
+    private var mirrorComplete = false
+    private var lastSelfEditAt = 0L
+
+    fun invalidateMirror() {
+        mirrorValid = false
+        mirrorComplete = false
+        leftMirror.setLength(0)
+    }
+
+    /** Called for every `onUpdateSelection`: an update long after our last edit is the user/app moving the caret. */
+    fun noteSelectionUpdate() {
+        if (mirrorValid && SystemClock.uptimeMillis() - lastSelfEditAt > SELF_EDIT_WINDOW_MS) invalidateMirror()
+    }
+
+    private fun touched() {
+        lastSelfEditAt = SystemClock.uptimeMillis()
+    }
+
+    private fun mirrorAppend(text: String) {
+        if (!mirrorValid) return
+        leftMirror.append(text)
+        if (leftMirror.length > MIRROR_MAX * 2) {
+            leftMirror.delete(0, leftMirror.length - MIRROR_MAX)
+            mirrorComplete = false
+        }
+    }
+
+    private fun mirrorDeleteLast(count: Int) {
+        if (!mirrorValid) return
+        val n = minOf(count, leftMirror.length)
+        leftMirror.setLength(leftMirror.length - n)
+        if (n < count) invalidateMirror()
+    }
+
+    private fun ensureMirror(ic: InputConnection): Boolean {
+        if (mirrorValid) return true
+        val raw = try {
+            ic.getTextBeforeCursor(MIRROR_MAX, 0)?.toString()
+        } catch (_: RuntimeException) {
+            null
+        } ?: return false
+        val field = if (composingActive) fieldText else ""
+        val stripped = if (field.isNotEmpty() && raw.endsWith(field)) raw.substring(0, raw.length - field.length) else raw
+        leftMirror.setLength(0)
+        leftMirror.append(stripped)
+        mirrorValid = true
+        mirrorComplete = raw.length < MIRROR_MAX
+        return true
+    }
+
+    /** Text before the caret *outside* our composing region (the context the language model should see). */
+    fun leftContextText(ic: InputConnection, max: Int): String {
+        if (!ensureMirror(ic)) return ""
+        val len = leftMirror.length
+        return if (len <= max) leftMirror.toString() else leftMirror.substring(len - max)
+    }
+
     /** True while the editor holds an active composing region of ours. */
     val hasComposition: Boolean get() = composingActive
 
@@ -93,13 +163,21 @@ internal class CompositionController(private val host: ImeHost) {
         composingActive = false
         buffer.setLength(0)
         resetField()
+        invalidateMirror()
     }
 
     private fun resetField() {
         fieldText = ""
         bestRoman = ""
         bestText = ""
+        sessionBest.clear()
     }
+
+    /**
+     * Model spellings already shown for prefixes of the word being typed. Backspacing (or retyping) back to a prefix
+     * therefore shows the model's spelling on the very same frame instead of flashing the rule-based preview.
+     */
+    private val sessionBest = HashMap<String, String>()
 
     /**
      * Called from `onUpdateSelection`. When the framework reports that our
@@ -115,6 +193,7 @@ internal class CompositionController(private val host: ImeHost) {
             composingActive = false
             buffer.setLength(0)
             resetField()
+            invalidateMirror()
             return true
         }
         // Any selection outside the composing region means the caret was moved
@@ -124,6 +203,7 @@ internal class CompositionController(private val host: ImeHost) {
             composingActive = false
             buffer.setLength(0)
             resetField()
+            invalidateMirror()
             return true
         }
         return false
@@ -160,6 +240,7 @@ internal class CompositionController(private val host: ImeHost) {
             try {
                 ic.setComposingText("", 1)
                 ic.finishComposingText()
+                touched()
             } catch (_: RuntimeException) {
             }
             composingActive = false
@@ -199,9 +280,11 @@ internal class CompositionController(private val host: ImeHost) {
         if (buffer.toString() != roman) return false
         bestRoman = roman
         bestText = text
+        sessionBest[roman] = text
         if (text == fieldText) return false
         return try {
             ic.setComposingText(text, 1)
+            touched()
             fieldText = text
             true
         } catch (_: RuntimeException) {
@@ -213,9 +296,14 @@ internal class CompositionController(private val host: ImeHost) {
         previewBuilder.setLength(0)
         PhoneticEngine.transliterateInto(buffer, previewBuilder, devanagariDigits)
         val preview = previewBuilder.toString()
-        val shown = if (bestText.isNotEmpty() && bestRoman.length == buffer.length && bestRoman.contentEquals(buffer)) bestText else preview
+        val shown = if (bestText.isNotEmpty() && bestRoman.length == buffer.length && bestRoman.contentEquals(buffer)) {
+            bestText
+        } else {
+            sessionBest[buffer.toString()] ?: preview
+        }
         try {
             if (shown != fieldText || !composingActive) ic.setComposingText(shown, 1)
+            touched()
             fieldText = shown
             composingActive = true
         } catch (_: RuntimeException) {
@@ -238,7 +326,10 @@ internal class CompositionController(private val host: ImeHost) {
                 // commitText replaces the composing region in place; finishComposingText first would leave the
                 // old composing text behind and the payload would be appended after it (duplicated words).
                 ic.commitText(payload, 1)
+                touched()
+                mirrorAppend(payload)
             } catch (_: RuntimeException) {
+                invalidateMirror()
                 return payload
             }
         }
@@ -262,11 +353,17 @@ internal class CompositionController(private val host: ImeHost) {
             if (addSpaceAfter) {
                 ic.commitText(payload, 1)
                 ic.commitText(" ", 1)
+                touched()
+                mirrorAppend(payload)
+                mirrorAppend(" ")
             } else {
                 ic.commitText(payload, 1)
+                touched()
+                mirrorAppend(payload)
             }
         } catch (_: RuntimeException) {
             // Editor went away between keystrokes.
+            invalidateMirror()
         }
     }
 
@@ -283,9 +380,23 @@ internal class CompositionController(private val host: ImeHost) {
         if (count <= 0) return false
         return try {
             ic.deleteSurroundingText(count, 0)
+            touched()
+            mirrorDeleteLast(count)
             true
         } catch (_: RuntimeException) {
+            invalidateMirror()
             false
+        }
+    }
+
+    /** Deletes [count] UTF-16 units left of the caret (used by the double-space period). */
+    fun deleteBefore(ic: InputConnection, count: Int) {
+        try {
+            ic.deleteSurroundingText(count, 0)
+            touched()
+            mirrorDeleteLast(count)
+        } catch (_: RuntimeException) {
+            invalidateMirror()
         }
     }
 
@@ -297,6 +408,7 @@ internal class CompositionController(private val host: ImeHost) {
      * pair or a Devanagari conjunct is never cut in half.
      */
     fun deleteClusterForward(ic: InputConnection): Boolean {
+        touched()
         val after = try {
             ic.getTextAfterCursor(DELETE_LOOKBACK, 0)?.toString()
         } catch (_: RuntimeException) {
@@ -333,8 +445,11 @@ internal class CompositionController(private val host: ImeHost) {
         val deleteCount = before.length - cursor
         return try {
             ic.deleteSurroundingText(deleteCount, 0)
+            touched()
+            mirrorDeleteLast(deleteCount)
             consumed
         } catch (_: RuntimeException) {
+            invalidateMirror()
             0
         }
     }
@@ -354,6 +469,7 @@ internal class CompositionController(private val host: ImeHost) {
      */
     fun moveCursor(ic: InputConnection, characters: Int): Boolean {
         if (characters == 0) return false
+        invalidateMirror()
         val extracted = try {
             ic.getExtractedText(extractedRequest, 0)
         } catch (_: RuntimeException) {
@@ -385,6 +501,7 @@ internal class CompositionController(private val host: ImeHost) {
 
     /** Selects the whole document (used by the clipboard panel's "select all"). */
     fun selectAll(ic: InputConnection): Boolean {
+        invalidateMirror()
         val extracted = try {
             ic.getExtractedText(extractedRequest, 0)
         } catch (_: RuntimeException) {
@@ -421,22 +538,43 @@ internal class CompositionController(private val host: ImeHost) {
         try {
             ic.beginBatchEdit()
             ic.setComposingText("", 1)
-            val before = ic.getTextBeforeCursor(2, 0)?.toString().orEmpty()
-            if (before.endsWith(" ") && before.length == 2 && before[0] != ' ') ic.deleteSurroundingText(1, 0)
+            val before = readTextBefore(ic, 2).orEmpty()
+            if (before.endsWith(" ") && before.length == 2 && before[0] != ' ') {
+                ic.deleteSurroundingText(1, 0)
+                mirrorDeleteLast(1)
+            }
             ic.commitText(text, 1)
             ic.endBatchEdit()
+            touched()
+            mirrorAppend(text)
         } catch (_: RuntimeException) {
             // editor went away
+            invalidateMirror()
         }
         return text
     }
 
-    /** Last [count] characters before the caret, or null when unavailable. */
-    fun readTextBefore(ic: InputConnection, count: Int): String? = try {
-        ic.getTextBeforeCursor(count, 0)?.toString()
-    } catch (_: RuntimeException) {
-        null
+    /**
+     * Last [count] characters before the caret (including our composing text, like the framework call), or null when
+     * unavailable. Served from the in-memory mirror whenever it holds enough text; otherwise one real read.
+     */
+    fun readTextBefore(ic: InputConnection, count: Int): String? {
+        if (ensureMirror(ic) && (leftMirror.length + fieldLengthIfComposing() >= count || mirrorComplete)) {
+            val field = if (composingActive) fieldText else ""
+            val total = leftMirror.length + field.length
+            if (total <= count) return leftMirror.toString() + field
+            val from = total - count
+            return if (from >= leftMirror.length) field.substring(from - leftMirror.length)
+            else leftMirror.substring(from) + field
+        }
+        return try {
+            ic.getTextBeforeCursor(count, 0)?.toString()
+        } catch (_: RuntimeException) {
+            null
+        }
     }
+
+    private fun fieldLengthIfComposing(): Int = if (composingActive) fieldText.length else 0
 
     /**
      * True when the caret sits at a sentence start, which is what drives
@@ -523,6 +661,8 @@ internal class CompositionController(private val host: ImeHost) {
     }
 
     private companion object {
+        const val MIRROR_MAX = 320
+        const val SELF_EDIT_WINDOW_MS = 400L
         const val INITIAL_BUFFER = 64
         const val MAX_BUFFER = 128
         const val DELETE_LOOKBACK = 32

@@ -61,4 +61,38 @@ object TlmLoader {
         engine.suggest("", "ma")
         return engine
     }
+
+    private val WARMUP_WORDS = listOf(
+        "ma", "ho", "chha", "ra", "ko", "ka", "ki", "le", "lai", "ma", "hami", "timi", "tapai", "k", "ke", "kina", "kasari",
+        "ramro", "namaste", "dhanyabad", "nepal", "ghar", "school", "aaja", "bholi", "hijo", "pani", "tara", "ani", "yo", "tyo",
+        "jaane", "garne", "bhayo", "hunchha", "chhaina", "xa", "xaina", "khana", "kaam", "dherai", "thorai", "maya", "sathi",
+        "bhai", "dai", "didi", "aama", "buwa", "kati", "kahile", "kaha", "kun", "kasto", "mero", "timro", "hamro", "tapaiko",
+        "usle", "maile", "sanga", "bata", "dekhi", "samma", "sabai", "kehi", "aru", "naya", "thulo", "sano", "thik", "hajur",
+        "ok", "hello", "thank", "you", "please", "sorry", "love", "friend", "good", "morning", "night", "bye", "kathmandu",
+        "pokhara", "computer", "mobile", "phone", "internet", "facebook", "message", "call", "video", "photo", "gaun", "sahar",
+        "desh", "bhasha", "kitab", "paisa", "gari", "bari", "paani", "dudh", "chiya", "bhat", "dal", "tarkari", "garnu",
+        "hunuhunchha", "bhanera", "chahinchha", "pardaina", "sakchhu", "janchhu", "aauchhu", "khanchhu", "padhchhu",
+    )
+
+    /**
+     * Ranks the most common typed words once, in the background, so (a) ART's JIT has compiled the inference kernels
+     * before the first real keystroke and (b) those words are already in the engine's LRU cache.
+     */
+    fun warmup(engine: HybridEngine, pauseMs: Long = 6L, stop: () -> Boolean = { false }) {
+        var left = ""
+        for (word in WARMUP_WORDS) {
+            if (stop()) return
+            try {
+                engine.suggest(left, word, 6, true, false)
+            } catch (_: Throwable) {
+                // Warm-up is best effort.
+            }
+            left = if (left.isEmpty()) "म " else ""
+            try {
+                Thread.sleep(pauseMs)
+            } catch (_: InterruptedException) {
+                return
+            }
+        }
+    }
 }

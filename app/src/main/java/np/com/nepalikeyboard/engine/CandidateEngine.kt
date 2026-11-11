@@ -1,13 +1,18 @@
 package np.com.nepalikeyboard.engine
 
+import android.os.Handler
+import android.os.Looper
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import np.com.nepalikeyboard.data.LearningRepository
 import np.com.nepalikeyboard.engine.unicode.Devanagari
 import np.com.nepalikeyboard.tlm.HybridEngine
+import np.com.nepalikeyboard.tlm.TlmStale
+import np.com.nepalikeyboard.util.WorkerThreads
 
 /**
  * Asynchronous candidate pipeline.
@@ -47,6 +52,7 @@ class CandidateEngine(
             val previousWord: String?,
             val devanagariDigits: Boolean,
             val leftContext: String,
+            val submittedAt: Long = System.nanoTime(),
         ) : Request
 
         data class Prediction(
@@ -61,29 +67,84 @@ class CandidateEngine(
     @Volatile
     private var pendingDeep = false
 
+    private val mainHandler = Handler(Looper.getMainLooper())
+
+    /** The newest result the worker finished, readable from any thread (see [awaitPublished]). */
+    private class Published(val generation: Long, val candidates: List<Candidate>)
+
+    @Volatile
+    private var published: Published? = null
+    private val publishLock = ReentrantLock()
+    private val publishedChanged = publishLock.newCondition()
+
     init {
-        scope.launch(Dispatchers.Default) {
+        scope.launch(WorkerThreads.inference) {
             for (request in requests) {
                 try {
-                when (request) {
-                    is Request.Roman -> {
-                        // Phase 1 is cheap (lexicon + rescoring, no beam search) so the strip updates within a
-                        // few ms of the key press; phase 2 refines unseen words only if nobody typed meanwhile.
-                        deliver(handleRoman(request, deep = false), predictionOnly = false, generation = request.generation)
-                        if (pendingDeep && latestGeneration.get() == request.generation) {
-                            pendingDeep = false
-                            deliver(handleRoman(request, deep = true), predictionOnly = false, generation = request.generation)
+                    when (request) {
+                        is Request.Roman -> processRoman(request)
+                        is Request.Prediction -> if (latestGeneration.get() == request.generation) {
+                            post(request.generation, handlePrediction(request), predictionOnly = true)
                         }
                     }
-                    is Request.Prediction -> deliver(handlePrediction(request), predictionOnly = true, generation = request.generation)
-                }
                 } catch (error: kotlinx.coroutines.CancellationException) {
                     throw error
+                } catch (error: TlmStale) {
+                    // A newer keystroke superseded this request mid-flight; its own request is already queued.
                 } catch (error: Throwable) {
                     // One bad request must not kill the worker for the rest of the session.
                     np.com.nepalikeyboard.util.KeyboardLog.e("candidate worker request failed", error)
                 }
             }
+        }
+    }
+
+    /**
+     * Phase 1 is cheap (lexicon + rescoring, no beam search) so the composing text and strip update within a few ms of
+     * the key press; phase 2 (beam search for unseen words) only runs if nobody typed meanwhile and aborts the moment
+     * somebody does.
+     */
+    private fun processRoman(request: Request.Roman) {
+        if (latestGeneration.get() != request.generation) return
+        val shallow = handleRoman(request, deep = false)
+        np.com.nepalikeyboard.util.TlmStats.record(System.nanoTime() - request.submittedAt)
+        publish(request.generation, shallow)
+        post(request.generation, shallow, predictionOnly = false)
+        if (pendingDeep && latestGeneration.get() == request.generation) {
+            pendingDeep = false
+            val deep = handleRoman(request, deep = true)
+            publish(request.generation, deep)
+            post(request.generation, deep, predictionOnly = false)
+        }
+    }
+
+    private fun publish(generation: Long, candidates: List<Candidate>) {
+        publishLock.lock()
+        try {
+            published = Published(generation, candidates)
+            publishedChanged.signalAll()
+        } finally {
+            publishLock.unlock()
+        }
+    }
+
+    /**
+     * The candidates the worker computed for [generation], waiting at most [timeoutMs]. Used by Space so it commits the
+     * model's pick for the word on screen without ever running the model on the main thread. Null on timeout.
+     */
+    fun awaitPublished(generation: Long, timeoutMs: Long): List<Candidate>? {
+        published?.let { if (it.generation == generation) return it.candidates }
+        var nanos = TimeUnit.MILLISECONDS.toNanos(timeoutMs)
+        publishLock.lock()
+        try {
+            while (true) {
+                val p = published
+                if (p != null && p.generation == generation) return p.candidates
+                if (nanos <= 0L) return null
+                nanos = publishedChanged.awaitNanos(nanos)
+            }
+        } finally {
+            publishLock.unlock()
         }
     }
 
@@ -123,10 +184,9 @@ class CandidateEngine(
     // Worker
     // -----------------------------------------------------------------------
 
-    private suspend fun deliver(candidates: List<Candidate>, predictionOnly: Boolean, generation: Long) {
-        withContext(Dispatchers.Main.immediate) {
-            callback.onCandidatesReady(generation, candidates, predictionOnly)
-        }
+    /** Hands a result to the main thread without making the worker wait for it. */
+    private fun post(generation: Long, candidates: List<Candidate>, predictionOnly: Boolean) {
+        mainHandler.post { callback.onCandidatesReady(generation, candidates, predictionOnly) }
     }
 
     private fun handleRoman(request: Request.Roman, deep: Boolean = true): List<Candidate> {
@@ -137,6 +197,8 @@ class CandidateEngine(
         if (tlm != null && isTlmWord(buffer)) {
             try {
                 return handleTlm(tlm, request, deep)
+            } catch (error: TlmStale) {
+                throw error
             } catch (error: Throwable) {
                 // fall through to the deterministic path
                 np.com.nepalikeyboard.util.KeyboardLog.e("TinyLM suggest failed", error)
@@ -233,7 +295,11 @@ class CandidateEngine(
     /** TinyLM path: stage-1 ranked words, stage-2 context rerank, Padayog flags; literal chip last. */
     private fun handleTlm(tlm: HybridEngine, request: Request.Roman, deep: Boolean): List<Candidate> {
         val buffer = request.buffer
-        val suggestion = tlm.suggest(request.leftContext, buffer, MAX_CANDIDATES - 1, deep = deep)
+        val generation = request.generation
+        val suggestion = tlm.suggest(
+            request.leftContext, buffer, MAX_CANDIDATES - 1, deep = deep,
+            stale = { latestGeneration.get() != generation },
+        )
         pendingDeep = !deep && suggestion.pending
         val result = ArrayList<Candidate>(MAX_CANDIDATES)
         val seen = HashSet<String>()

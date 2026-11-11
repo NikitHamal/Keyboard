@@ -1,21 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Themed-icon layer: the same keycap, glyph and badge as single-colour shapes (system tints them). -->
+<!-- Themed (Material You) layer: the same two keys, glyphs cut out, single colour. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:pathData="M42,30h24a13,13 0 0 1 13,13v18a13,13 0 0 1 -13,13h-24a13,13 0 0 1 -13,-13v-18a13,13 0 0 1 13,-13z"
-        android:strokeColor="#FF000000"
-        android:strokeWidth="3.4" />
-    <path
-        android:pathData="M37,44H65M59,44V65M59,52C49,47 42,53 45,60C48,66 55,65 59,59"
-        android:strokeColor="#FF000000"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:strokeWidth="3.4" />
+        android:fillColor="#FF000000"
+        android:fillType="evenOdd"
+        android:pathData="M64,48H67A10,10 0 0 1 77,58V68A10,10 0 0 1 67,78H57A10,10 0 0 1 47,68V64H51A13,13 0 0 0 64,51ZM68.58 75.35Q69.62 75.35 70.48 74.97Q71.03 74.73 71.45 74.38V75.12H75.3V64.08H71.45V64.83Q71.02 64.47 70.48 64.23Q69.62 63.85 68.58 63.85Q67.05 63.85 65.85 64.59Q64.66 65.33 63.98 66.63Q63.3 67.93 63.3 69.61Q63.3 71.27 63.98 72.57Q64.66 73.86 65.85 74.6Q67.05 75.35 68.58 75.35ZM69.43 71.85Q68.81 71.85 68.32 71.56Q67.83 71.27 67.55 70.76Q67.27 70.25 67.27 69.6Q67.27 68.95 67.56 68.44Q67.84 67.93 68.33 67.64Q68.81 67.35 69.45 67.35Q70.09 67.35 70.57 67.64Q71.06 67.93 71.32 68.43Q71.59 68.93 71.59 69.6Q71.59 70.59 70.99 71.22Q70.4 71.85 69.43 71.85Z" />
     <path
         android:fillColor="#FF000000"
-        android:pathData="M74,28m-8,0a8,8 0 1,1 16,0a8,8 0 1,1 -16,0" />
+        android:fillType="evenOdd"
+        android:pathData="M41,31H51A10,10 0 0 1 61,41V51A10,10 0 0 1 51,61H41A10,10 0 0 1 31,51V41A10,10 0 0 1 41,31ZM37.14 38H54.86V41.39H52.43V55H48.14V48.15H44.36V48.5Q44.36 49.85 43.83 50.48Q43.29 51.11 42.28 51.11Q41.55 51.11 40.78 50.69Q40.02 50.26 39.38 49.59Q38.74 48.91 38.34 48.13Q37.94 47.36 37.94 46.65Q37.94 45.81 38.41 45.29Q38.87 44.76 40.21 44.76H48.14V41.39H37.14Z" />
 </vector>

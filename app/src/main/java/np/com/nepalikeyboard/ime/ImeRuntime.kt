@@ -15,6 +15,8 @@ import np.com.nepalikeyboard.data.SettingsRepository
 import np.com.nepalikeyboard.engine.Lexicon
 import np.com.nepalikeyboard.tlm.HybridEngine
 import np.com.nepalikeyboard.tlm.TlmLoader
+import np.com.nepalikeyboard.tlm.TlmTuning
+import np.com.nepalikeyboard.util.WorkerThreads
 import np.com.nepalikeyboard.util.KeyboardLog
 
 /**
@@ -106,9 +108,22 @@ class ImeRuntime private constructor(
         scope.launch {
             val started = android.os.SystemClock.elapsedRealtime()
             try {
-                tlm = TlmLoader.load { name -> context.assets.open("tlm/$name").use { it.readBytes() } }
+                // Helper threads that split candidate scoring run at display priority, like the inference worker.
+                TlmTuning.threadInit = Runnable { WorkerThreads.boost() }
+                val engine = TlmLoader.load { name -> context.assets.open("tlm/$name").use { it.readBytes() } }
+                tlm = engine
                 _tlmReady.value = true
                 KeyboardLog.d("TinyLM ready in ${android.os.SystemClock.elapsedRealtime() - started} ms")
+                // Background-priority warm-up: JIT-compiles the kernels and seeds the cache with common words.
+                Thread({
+                    try {
+                        android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
+                    } catch (_: Throwable) {
+                    }
+                    val t0 = android.os.SystemClock.elapsedRealtime()
+                    TlmLoader.warmup(engine)
+                    KeyboardLog.d("TinyLM warm-up done in ${android.os.SystemClock.elapsedRealtime() - t0} ms")
+                }, "tlm-warmup").also { it.isDaemon = true }.start()
             } catch (error: Throwable) {
                 // Never take the keyboard down: the deterministic phonetic engine keeps working.
                 KeyboardLog.e("TinyLM load failed", error)
