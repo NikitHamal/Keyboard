@@ -148,6 +148,7 @@ class HybridEngine(
 ) {
     private val keep = keep
     private val cache = object : LinkedHashMap<String, List<Triple<String, Double, String>>>(256, 0.75f, true) { override fun removeEldestEntry(e: MutableMap.MutableEntry<String, List<Triple<String, Double, String>>>) = size > 4000 }
+    private val shallowKeys = HashSet<String>()
     private val deva = Regex("[\\u0900-\\u097F]"); private val devl = Regex("[\\u0900-\\u0963\\u0971-\\u097F]"); private val ws = Regex("^\\s+$")
     private val whoNext = setOf("हो", "हुन्", "हुनुहुन्छ", "होइन", "छ", "छन्", "हुन्छ")
     private val pronoun = setOf("तपाईं", "तिमी", "ऊ", "यो", "त्यो", "उनी", "को")
@@ -233,8 +234,8 @@ class HybridEngine(
     }
 
     /** ranked candidates (word, score, kind), best first, for ONE roman word (Nepali) */
-    fun rankWord(roman: String, topn: Int = 5, lang: String = "ne"): List<Triple<String, Double, String>> {
-        val w = roman.lowercase(); val ck = "$lang|$w"
+    fun rankWord(roman: String, topn: Int = 5, lang: String = "ne", deep: Boolean = true): List<Triple<String, Double, String>> {
+        val w = roman.lowercase(); val ck = "$lang|$w" + (if (deep) "" else "|s")
         val res = cache.getOrPut(ck) {
             val e = neural.encode(w, lang)
             class E(var kind: String, var f: Int, var lp: Double?)
@@ -246,7 +247,8 @@ class HybridEngine(
                 if (names.isNotEmpty()) neural.score(e, names).forEachIndexed { i, s -> pool[names[i]]!!.lp = s.toDouble() }
             }
             val mx = pool.values.maxOfOrNull { it.lp ?: -1e9 } ?: -1e9
-            if (lang != "ne" || pool.isEmpty() || mx < p.beamThr) {
+            if (!deep && lang == "ne" && pool.isNotEmpty() && mx < p.beamThr) shallowKeys.add(ck)
+            if (lang != "ne" || pool.isEmpty() || (deep && mx < p.beamThr)) {
                 if (lang == "ne") {
                     val c2 = comp2Cands(w).filter { it.key !in pool }
                     for ((n, kf) in c2) pool[n] = E(kf.first, kf.second, null)
@@ -393,7 +395,7 @@ class HybridEngine(
     // ---- keyboard (IME) API --------------------------------------------------------------------------
 
     /** Ranked chips for the word being typed; [joins][i] is true when chip i should be glued to the previous word (Padayog). */
-    class Suggestion(val words: List<String>, val joins: BooleanArray)
+    class Suggestion(val words: List<String>, val joins: BooleanArray, val pending: Boolean = false)
 
     private val leftTok = Regex("\\s+|[।?!,;:]|[^\\s।?!,;:]+")
 
@@ -412,8 +414,8 @@ class HybridEngine(
 
     /** Context-aware suggestions for [roman] given the text [left] of the caret (mirrors analyze() on the last word). */
     @Synchronized
-    fun suggest(left: String, roman: String, n: Int = 6, byakaran: Boolean = true): Suggestion {
-        val ranked = rankWord(roman, 12)
+    fun suggest(left: String, roman: String, n: Int = 6, byakaran: Boolean = true, deep: Boolean = true): Suggestion {
+        val ranked = rankWord(roman, 12, "ne", deep)
         if (ranked.isEmpty()) return Suggestion(emptyList(), BooleanArray(0))
         val segs = leftSegs(left); val i = segs.size
         segs.add(Seg(roman, ranked[0].first, true, ranked.map { it.first }, !lex.freq.containsKey(ranked[0].first)))
@@ -431,7 +433,7 @@ class HybridEngine(
             val jn = joinSegs(clone); val k = jn.where[i] ?: continue
             joins[j] = jn.head[k] != i
         }
-        return Suggestion(words, joins)
+        return Suggestion(words, joins, !deep && shallowKeys.contains("ne|" + roman.lowercase() + "|s"))
     }
 
     /** English/technical tokens (email, app, NEB ...) stay Latin: the literal chip leads for these. */

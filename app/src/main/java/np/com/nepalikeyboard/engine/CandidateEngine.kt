@@ -57,12 +57,23 @@ class CandidateEngine(
     }
 
     private val requests = Channel<Request>(Channel.CONFLATED)
+    private val latestGeneration = java.util.concurrent.atomic.AtomicLong(0)
+    @Volatile
+    private var pendingDeep = false
 
     init {
         scope.launch(Dispatchers.Default) {
             for (request in requests) {
                 when (request) {
-                    is Request.Roman -> deliver(handleRoman(request), predictionOnly = false, generation = request.generation)
+                    is Request.Roman -> {
+                        // Phase 1 is cheap (lexicon + rescoring, no beam search) so the strip updates within a
+                        // few ms of the key press; phase 2 refines unseen words only if nobody typed meanwhile.
+                        deliver(handleRoman(request, deep = false), predictionOnly = false, generation = request.generation)
+                        if (pendingDeep && latestGeneration.get() == request.generation) {
+                            pendingDeep = false
+                            deliver(handleRoman(request, deep = true), predictionOnly = false, generation = request.generation)
+                        }
+                    }
                     is Request.Prediction -> deliver(handlePrediction(request), predictionOnly = true, generation = request.generation)
                 }
             }
@@ -77,6 +88,7 @@ class CandidateEngine(
         devanagariDigits: Boolean,
         leftContext: String = "",
     ) {
+        latestGeneration.set(generation)
         requests.trySend(
             Request.Roman(
                 generation = generation,
@@ -90,6 +102,7 @@ class CandidateEngine(
 
     /** Queues next-word prediction work for an empty composition. */
     fun submitPrediction(generation: Long, previousWord: String?, devanagariPrefix: String? = null) {
+        latestGeneration.set(generation)
         requests.trySend(
             Request.Prediction(
                 generation = generation,
@@ -109,14 +122,14 @@ class CandidateEngine(
         }
     }
 
-    private fun handleRoman(request: Request.Roman): List<Candidate> {
+    private fun handleRoman(request: Request.Roman, deep: Boolean = true): List<Candidate> {
         val buffer = request.buffer
         if (buffer.isEmpty()) return emptyList()
 
         val tlm = tlmProvider()
         if (tlm != null && isTlmWord(buffer)) {
             try {
-                return handleTlm(tlm, request)
+                return handleTlm(tlm, request, deep)
             } catch (error: Throwable) {
                 // fall through to the deterministic path
                 np.com.nepalikeyboard.util.KeyboardLog.e("TinyLM suggest failed", error)
@@ -211,9 +224,10 @@ class CandidateEngine(
     }
 
     /** TinyLM path: stage-1 ranked words, stage-2 context rerank, Padayog flags; literal chip last. */
-    private fun handleTlm(tlm: HybridEngine, request: Request.Roman): List<Candidate> {
+    private fun handleTlm(tlm: HybridEngine, request: Request.Roman, deep: Boolean): List<Candidate> {
         val buffer = request.buffer
-        val suggestion = tlm.suggest(request.leftContext, buffer, MAX_CANDIDATES - 1)
+        val suggestion = tlm.suggest(request.leftContext, buffer, MAX_CANDIDATES - 1, deep = deep)
+        pendingDeep = !deep && suggestion.pending
         val result = ArrayList<Candidate>(MAX_CANDIDATES)
         val seen = HashSet<String>()
         val keepLatin = tlm.keepsLatin(buffer)

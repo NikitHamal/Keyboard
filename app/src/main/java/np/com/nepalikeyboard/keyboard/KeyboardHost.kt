@@ -130,14 +130,16 @@ fun KeyboardHost(
         // Both rows are settings-controlled. Hiding the strip is how a user turns
         // suggestions off; hiding the toolbar hands every secondary action back to
         // the settings app. Neither row leaves a gap when it is off.
-        TopBar(
-            state = state,
-            sink = sink,
-            scriptLabel = scriptLabel,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(tokens.stripHeight),
-        )
+        if (state.suggestionsVisible || state.isSecure || state.toolbarVisible) {
+            TopBar(
+                state = state,
+                sink = sink,
+                scriptLabel = scriptLabel,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(tokens.stripHeight),
+            )
+        }
 
         Box(
             modifier = Modifier

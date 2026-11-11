@@ -301,13 +301,13 @@ class NepaliImeService : InputMethodService(), ImeHost {
         val portrait = metrics.heightPixels >= metrics.widthPixels
         val fraction = if (portrait) PORTRAIT_FRACTION else LANDSCAPE_FRACTION
         val raw = (metrics.heightPixels * fraction).toInt()
-        val minPx = with(resources.displayMetrics) { 240f * density }.toInt()
-        val maxPx = with(resources.displayMetrics) { 380f * density }.toInt()
+        val minPx = with(resources.displayMetrics) { 232f * density }.toInt()
+        val maxPx = with(resources.displayMetrics) { 340f * density }.toInt()
         return raw.coerceIn(minPx, maxPx)
     }
 
     private companion object {
-        const val PORTRAIT_FRACTION = 0.44f
+        const val PORTRAIT_FRACTION = 0.345f
         const val LANDSCAPE_FRACTION = 0.50f
     }
 }
