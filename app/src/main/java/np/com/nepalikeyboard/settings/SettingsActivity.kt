@@ -2,6 +2,37 @@ package np.com.nepalikeyboard.settings
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateColorAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Dashboard
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import np.com.nepalikeyboard.ui.theme.devanagariStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.ScrollState
@@ -103,95 +134,190 @@ class SettingsActivity : ComponentActivity() {
 private fun SettingsShell(snapshot: SettingsSnapshot) {
     val tokens = LocalKeyboardTokens.current
     val writer = rememberSettingsWriter()
+    val context = LocalContext.current
+    val runtime = remember(context) { ImeRuntime.get(context) }
+    LaunchedEffect(Unit) { runtime.ensureTlm() }
+    val tlmReady by runtime.tlmReady.collectAsStateWithLifecycle()
     var selected by rememberSaveable { mutableIntStateOf(0) }
     val tabs = remember { SettingsTab.entries.toList() }
     val current = tabs[selected.coerceIn(0, tabs.lastIndex)]
+    val scheme = MaterialTheme.colorScheme
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(tokens.keyboardBackground),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 12.dp),
-        ) {
-            Text(
-                text = stringResource(R.string.settings_title),
-                style = latinStyle(20.sp, FontWeight.SemiBold),
-                color = tokens.suggestionText,
-                modifier = Modifier.padding(top = 8.dp),
-            )
-            Text(
-                text = stringResource(R.string.settings_subtitle),
-                style = latinStyle(12.sp),
-                color = tokens.iconTint,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(2.dp))
-            TabStrip(
-                tabs = tabs,
-                selectedIndex = selected,
-                scrollState = rememberScrollState(),
-                onSelect = { index -> selected = index },
-            )
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1f),
-        ) {
-            when (current) {
-                SettingsTab.SETUP -> SetupScreen()
-                SettingsTab.TYPING -> TypingScreen()
-                SettingsTab.LAYOUT -> LayoutScreen(snapshot = snapshot, writer = writer)
-                SettingsTab.THEME -> ThemeScreen(snapshot = snapshot, writer = writer)
-                SettingsTab.FEEDBACK -> FeedbackScreen(snapshot = snapshot, writer = writer)
-                SettingsTab.DICTIONARY -> DictionaryScreen(writer = writer)
-                SettingsTab.PRIVACY -> PrivacyScreen(writer = writer)
+        Column(modifier = Modifier.fillMaxSize()) {
+            HeroHeader(tlmReady = tlmReady)
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+            ) {
+                AnimatedContent(
+                    targetState = current,
+                    transitionSpec = {
+                        val dir = if (targetState.ordinal >= initialState.ordinal) 1 else -1
+                        (fadeIn(tween(180)) + slideInHorizontally(spring(dampingRatio = 0.8f, stiffness = Spring.StiffnessMediumLow)) { dir * it / 8 })
+                            .togetherWith(fadeOut(tween(100)))
+                    },
+                    label = "settingsTab",
+                ) { tab ->
+                    Box(modifier = Modifier.fillMaxSize().padding(bottom = 84.dp)) {
+                        when (tab) {
+                            SettingsTab.SETUP -> SetupScreen()
+                            SettingsTab.TYPING -> TypingScreen()
+                            SettingsTab.LAYOUT -> LayoutScreen(snapshot = snapshot, writer = writer)
+                            SettingsTab.THEME -> ThemeScreen(snapshot = snapshot, writer = writer)
+                            SettingsTab.FEEDBACK -> FeedbackScreen(snapshot = snapshot, writer = writer)
+                            SettingsTab.DICTIONARY -> DictionaryScreen(writer = writer)
+                            SettingsTab.PRIVACY -> PrivacyScreen(writer = writer)
+                        }
+                    }
+                }
             }
         }
+        FloatingNav(
+            tabs = tabs,
+            selectedIndex = selected,
+            onSelect = { index -> selected = index },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 10.dp),
+        )
     }
 }
 
+/** Expressive hero: tonal container with oversized corners, the product name and live engine status. */
 @Composable
-private fun TabStrip(
-    tabs: List<SettingsTab>,
-    selectedIndex: Int,
-    scrollState: ScrollState,
-    onSelect: (Int) -> Unit,
-) {
+private fun HeroHeader(tlmReady: Boolean) {
+    val scheme = MaterialTheme.colorScheme
     val tokens = LocalKeyboardTokens.current
-    Row(
+    val pulse = rememberInfiniteTransition(label = "pulse")
+    val alpha by pulse.animateFloat(
+        initialValue = 0.35f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(tween(700), RepeatMode.Reverse),
+        label = "pulseAlpha",
+    )
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .horizontalScroll(scrollState)
-            .padding(vertical = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+            .clip(RoundedCornerShape(bottomStart = 40.dp, bottomEnd = 40.dp))
+            .background(scheme.primaryContainer)
+            .statusBarsPadding()
+            .padding(start = 22.dp, end = 22.dp, top = 14.dp, bottom = 20.dp),
+    ) {
+        Text(
+            text = "\u0928\u0947\u092A\u093E\u0932\u0940 \u0915\u0940\u092C\u094B\u0930\u094D\u0921",
+            style = devanagariStyle(30.sp, FontWeight.Bold),
+            color = scheme.onPrimaryContainer,
+        )
+        Text(
+            text = stringResource(R.string.settings_title),
+            style = latinStyle(15.sp, FontWeight.SemiBold),
+            color = scheme.onPrimaryContainer.copy(alpha = 0.8f),
+        )
+        Spacer(Modifier.height(12.dp))
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .background(scheme.primary.copy(alpha = 0.14f))
+                .padding(horizontal = 14.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(9.dp)
+                    .clip(CircleShape)
+                    .background(if (tlmReady) scheme.primary else scheme.tertiary.copy(alpha = alpha)),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = if (tlmReady) {
+                    stringResource(R.string.tinylm_ready)
+                } else {
+                    stringResource(R.string.tinylm_loading)
+                },
+                style = latinStyle(12.sp, FontWeight.SemiBold),
+                color = scheme.onPrimaryContainer,
+            )
+        }
+        Text(
+            text = stringResource(R.string.settings_subtitle),
+            style = latinStyle(12.sp),
+            color = tokens.iconTint,
+            modifier = Modifier.padding(top = 10.dp),
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+private fun SettingsTab.icon(): ImageVector = when (this) {
+    SettingsTab.SETUP -> Icons.Filled.Keyboard
+    SettingsTab.TYPING -> Icons.Filled.Edit
+    SettingsTab.LAYOUT -> Icons.Filled.Dashboard
+    SettingsTab.THEME -> Icons.Filled.Palette
+    SettingsTab.FEEDBACK -> Icons.Filled.Vibration
+    SettingsTab.DICTIONARY -> Icons.Filled.Book
+    SettingsTab.PRIVACY -> Icons.Filled.Lock
+}
+
+/** M3E floating toolbar: the selected destination expands into an icon + label pill with a spring. */
+@Composable
+private fun FloatingNav(
+    tabs: List<SettingsTab>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Row(
+        modifier = modifier
+            .shadow(10.dp, RoundedCornerShape(50))
+            .clip(RoundedCornerShape(50))
+            .background(scheme.surfaceContainerHigh)
+            .padding(horizontal = 6.dp, vertical = 6.dp)
+            .animateContentSize(spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow)),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         for (index in tabs.indices) {
             val tab = tabs[index]
             val selected = index == selectedIndex
-            Box(
+            val bg by animateColorAsState(
+                targetValue = if (selected) scheme.primary else Color.Transparent,
+                animationSpec = tween(200),
+                label = "navBg",
+            )
+            Row(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(tokens.functionCornerRadius))
-                    .background(if (selected) tokens.accentKeyBackground else tokens.panelSurface)
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(50))
+                    .background(bg)
                     .clickable { onSelect(index) }
-                    .padding(horizontal = 12.dp, vertical = 7.dp),
-                contentAlignment = Alignment.Center,
+                    .padding(horizontal = if (selected) 14.dp else 10.dp)
+                    .animateContentSize(spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow)),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = stringResource(tab.labelRes),
-                    style = latinStyle(12.sp, FontWeight.SemiBold),
-                    color = if (selected) tokens.accentKeyLabel else tokens.suggestionText,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                Icon(
+                    imageVector = tab.icon(),
+                    contentDescription = stringResource(tab.labelRes),
+                    tint = if (selected) scheme.onPrimary else scheme.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp),
                 )
+                if (selected) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(tab.labelRes),
+                        style = latinStyle(13.sp, FontWeight.SemiBold),
+                        color = scheme.onPrimary,
+                        maxLines = 1,
+                    )
+                }
             }
         }
     }

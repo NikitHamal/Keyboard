@@ -180,7 +180,9 @@ object LayoutCatalog {
         if (numberRow) rows += numberRowKeys(devanagariNumerals, nepaliFlavoured = false)
 
         rows += KeyRow(
-            keys = "qwertyuiop".map { letter -> latinLetter(letter, shifted) },
+            keys = "qwertyuiop".mapIndexed { index, letter ->
+                latinLetter(letter, shifted, digit = if (numberRow) null else ((index + 1) % 10).toString())
+            },
         )
         rows += KeyRow(
             keys = "asdfghjkl".map { letter -> latinLetter(letter, shifted) },
@@ -205,21 +207,21 @@ object LayoutCatalog {
         // the letter rows above it.
         rows += KeyRow(
             keys = listOf(
-                symbolsKey(1.5f),
+                symbolsKey(1.4f),
                 charKey(",", longPress = listOf(";", ":", "\u0964")),
-                spaceKey(3.5f),
+                functionKey(KeyKind.LAYOUT_SWITCH, weight = 1.1f, labelRes = R.string.key_layout),
+                spaceKey(4f),
                 charKey(".", longPress = listOf(".com", ".np", "\u2026", ".org")),
-                functionKey(KeyKind.LAYOUT_SWITCH, weight = 1f, labelRes = R.string.key_layout),
-                enterKey(2f),
+                enterKey(1.6f),
             ),
         )
         return KeyboardLayout(id, rows)
     }
 
-    private fun latinLetter(letter: Char, shifted: Boolean): KeyDef {
+    private fun latinLetter(letter: Char, shifted: Boolean, digit: String? = null): KeyDef {
         val lower = letter.toString()
         val output = if (shifted) lower.uppercase() else lower
-        val longPress = LATIN_ACCENTS[lower].orEmpty().let { accents ->
+        val longPress = listOfNotNull(digit) + LATIN_ACCENTS[lower].orEmpty().let { accents ->
             if (shifted) accents.map { it.uppercase() } else accents
         }
         return charKey(output = output, label = output, longPress = longPress)

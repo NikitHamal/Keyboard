@@ -12,6 +12,7 @@ import np.com.nepalikeyboard.data.OneHandedSide
 import np.com.nepalikeyboard.data.SettingsSnapshot
 import np.com.nepalikeyboard.engine.Candidate
 import np.com.nepalikeyboard.engine.CandidateEngine
+import np.com.nepalikeyboard.engine.CandidateKind
 import np.com.nepalikeyboard.engine.PhoneticEngine
 import np.com.nepalikeyboard.engine.unicode.Devanagari
 import np.com.nepalikeyboard.engine.unicode.Graphemes
@@ -71,6 +72,7 @@ class SandboxController(
         scope = scope,
         learning = runtime.learning,
         lexiconProvider = { runtime.lexicon },
+        tlmProvider = { runtime.tlm },
         callback = this,
     )
 
@@ -132,6 +134,12 @@ class SandboxController(
         }
         scope.launch {
             runtime.lexiconReady.collect { available ->
+                if (available) refreshCandidates()
+            }
+        }
+        runtime.ensureTlm()
+        scope.launch {
+            runtime.tlmReady.collect { available ->
                 if (available) refreshCandidates()
             }
         }
@@ -296,13 +304,42 @@ class SandboxController(
 
     private fun commitRoman(corrected: String?) {
         if (roman.isEmpty()) return
-        val payload = corrected ?: preview
+        val best = if (corrected == null) sandboxTlm() else null
+        val payload = corrected ?: best?.text ?: preview
+        if ((best?.joinPrev == true || joinNext) && snapshot.joinPadayog) trimSpaceBeforeCaret()
+        joinNext = false
         insert(payload)
         roman.setLength(0)
         preview = ""
         candidates = emptyList()
         lastCommit = payload
         publish()
+    }
+
+    private var joinNext = false
+
+    private fun leftText(): String = buffer.substring(0, caret.coerceIn(0, buffer.length))
+
+    private fun sandboxTlm(): Candidate? {
+        val tlm = runtime.tlm ?: return null
+        val r = roman.toString()
+        for (c in r) if (!(c in 'a'..'z' || c in 'A'..'Z' || c == '\'')) return null
+        if (tlm.keepsLatin(r)) return Candidate(text = r, kind = CandidateKind.LITERAL)
+        return try {
+            val s = tlm.suggest(leftText(), r, 1)
+            val w = s.words.firstOrNull() ?: return null
+            Candidate(text = w, kind = CandidateKind.TRANSLITERATION, joinPrev = s.joins.firstOrNull() == true)
+        } catch (error: Throwable) {
+            null
+        }
+    }
+
+    private fun trimSpaceBeforeCaret() {
+        val p = caret.coerceIn(0, buffer.length)
+        if (p >= 2 && buffer[p - 1] == ' ' && buffer[p - 2] != ' ') {
+            buffer.deleteCharAt(p - 1)
+            caret = p - 1
+        }
     }
 
     private fun insert(text: String) {
@@ -415,7 +452,12 @@ class SandboxController(
     }
 
     override fun onCandidateSelected(candidate: Candidate) {
-        if (roman.isNotEmpty()) commitRoman(corrected = candidate.text) else insert(candidate.text)
+        if (roman.isNotEmpty()) {
+            joinNext = candidate.joinPrev
+            commitRoman(corrected = candidate.text)
+        } else {
+            insert(candidate.text)
+        }
         refreshCandidates()
     }
 
@@ -485,6 +527,7 @@ class SandboxController(
                 buffer = roman.toString(),
                 previousWord = lastCommit.ifEmpty { null },
                 devanagariDigits = snapshot.devanagariNumerals,
+                leftContext = leftText(),
             )
             publish()
             return

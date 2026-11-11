@@ -130,3 +130,22 @@ silently degrade.
 Application code is provided as-is for use and modification. Bundled typefaces
 keep their own licences: Poppins (SIL Open Font License 1.1) and Noto Sans
 Devanagari (SIL Open Font License 1.1); both are distributed in `res/font/`.
+
+## TinyLM engine (on-device transliteration)
+
+Romanized input is converted by the **TinyLM hybrid engine** from
+[NikitHamal/transliterationlm](https://github.com/NikitHamal/transliterationlm), bundled in
+`app/src/main/assets/tlm/` and ported to Kotlin in `np.com.nepalikeyboard.tlm`:
+
+1. **Stage 1** - 119k-word frequency lexicon with typist-proof phonetic skeleton keys, vibhakti / plural
+   morphology and a 1.9M-parameter int8 character transducer (ONNX Runtime) that rescores every candidate
+   and beam-searches unseen words.
+2. **Stage 2** - a tiny sentence-context scorer that sees the words left of the caret and resolves
+   homophones and grammar (`ma` म / मा, `pani` पनि / पानी, `ki` कि / की, `din` दिन / दीन ...), plus
+   subject-verb agreement (`हामी ... छौं`, `तिमी ... छौ`, `म ... एँ`).
+3. **Padayog** - postpositions typed after a space (`ram ko`) are glued to the previous word (रामको).
+   Chips that will join show a chain icon; the behaviour can be turned off in Settings -> Layout.
+
+Everything runs on a background coroutine behind a conflated channel; the instant deterministic
+transliteration is shown first and replaced by the model's pick (typically a few milliseconds later).
+Space always commits exactly what the first chip shows. Refresh the models with `tools/sync_tlm.sh`.

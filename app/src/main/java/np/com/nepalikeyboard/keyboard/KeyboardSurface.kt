@@ -11,6 +11,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.draw.shadow
@@ -547,6 +548,19 @@ private fun KeyContent(
             color = color,
             labelSize = labelSize,
         )
+
+        KeyKind.LAYOUT_SWITCH -> if (key.labelRes == R.string.key_layout) {
+            KeyIcon(icon = Icons.Filled.Language, color = color, labelSize = labelSize)
+        } else {
+            Text(
+                text = stringResource(key.labelRes),
+                style = latinStyle(actionSize * 1.05f, FontWeight.SemiBold),
+                color = color,
+                softWrap = false,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
 
         KeyKind.EMOJI -> KeyIcon(
             icon = Icons.Filled.EmojiEmotions,

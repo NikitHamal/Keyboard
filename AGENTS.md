@@ -269,3 +269,17 @@ A change is complete when all of the following hold:
    (`settings/PrivacyScreen.kt` and its `privacy_*` strings) still describes the
    app that exists, and no new permission has appeared in the manifest.
 5. Every user-visible string is in `res/values/strings.xml`.
+
+---
+
+## 11. TinyLM engine (added)
+
+* Package `np.com.nepalikeyboard.tlm` holds the hybrid engine (`TlmEngine.kt`, 1:1 port of `model/hybrid.py` /
+  `web/tlm.js`) and `TlmLoader`. Assets live in `assets/tlm/` (int8 ONNX + lexicon, ~10 MB, stored uncompressed).
+* `ImeRuntime.ensureTlm()` loads it once, off the main thread. **No code path may require it**: when it is null
+  (loading, failure) the deterministic `PhoneticEngine` + legacy lexicon keep the keyboard fully usable.
+* `CandidateEngine.handleTlm` produces the strip (best first, literal Latin last). `KeyboardController.tlmBest`
+  recomputes the top pick synchronously for Space/Enter/punctuation so the committed word is always chip #1.
+* Padayog joining (`Candidate.joinPrev`, `CompositionController.commitJoined`) deletes exactly one space in front
+  of the composing word and is gated by `SettingsSnapshot.joinPadayog`.
+* ONNX Runtime needs the R8 keep rules in `proguard-rules.pro`; `.onnx`/`.tsv` are in `noCompress`.

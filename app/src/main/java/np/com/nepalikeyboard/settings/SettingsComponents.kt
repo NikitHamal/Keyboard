@@ -110,15 +110,15 @@ fun SettingsCard(
     content: @Composable () -> Unit,
 ) {
     val tokens = LocalKeyboardTokens.current
-    val shape = RoundedCornerShape(tokens.functionCornerRadius)
+    val shape = RoundedCornerShape(22.dp)
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp)
+            .padding(vertical = 3.dp)
             .clip(shape)
             .background(tokens.panelSurface)
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         content()
     }
