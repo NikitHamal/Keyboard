@@ -285,3 +285,21 @@ A change is complete when all of the following hold:
 * Padayog joining (`Candidate.joinPrev`, `CompositionController.commitJoined`) deletes exactly one space in front
   of the composing word and is gated by `SettingsSnapshot.joinPadayog`.
 * ONNX Runtime needs the R8 keep rules in `proguard-rules.pro`; `.onnx`/`.tsv` are in `noCompress`.
+
+---
+
+## Hard-won IME rules (read before touching `ime/`)
+
+1. **Compose owners belong on the window DecorView.** `AbstractComposeView` resolves its window `Recomposer` from the
+   *root* of the view tree (the IME window's DecorView), not from its parent. `ComposeOwnerBridge.attach(root, decor)`
+   must install Lifecycle / SavedState / ViewModelStore owners on **both**. Installing them only on a container view
+   crashes the first composition with `ViewTreeLifecycleOwner not found from DecorView`.
+2. **`InputMethodService` replaces the input view's LayoutParams** with `MATCH_PARENT x WRAP_CONTENT`. Height is therefore
+   enforced in `FixedHeightFrame.onMeasure`, never through `layoutParams.height`.
+3. **Never declare a member after the `init {}` of `KeyboardController`** that `init`-launched collectors can touch.
+   Collectors run eagerly on `Dispatchers.Main.immediate`, so a later-declared property is still `null` (NPE).
+4. **No uncaught coroutine failures in the IME process**: the service scope carries a `CoroutineExceptionHandler` that
+   writes to `CrashLog`; the candidate worker catches per request.
+5. **Android 15 edge-to-edge**: the frame adds the navigation-bar inset itself when the framework did not, and
+   `KeyboardHost(bottomInsetPx = ...)` pads for it while the keyboard background keeps painting underneath.
+6. **Never build locally**; GitHub Actions (`build-release.yml`) is the only build.

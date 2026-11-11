@@ -12,7 +12,7 @@ import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.AbstractComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineName
@@ -118,7 +118,7 @@ class NepaliImeService : InputMethodService(), ImeHost {
             it.attach(root, decor)
             bridge = it
         }
-        val composeView = ComposeView(this).apply {
+        val composeView = SafeComposeView(this).apply {
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -344,6 +344,32 @@ class NepaliImeService : InputMethodService(), ImeHost {
         val minPx = with(resources.displayMetrics) { 232f * density }.toInt()
         val maxPx = with(resources.displayMetrics) { 340f * density }.toInt()
         return raw.coerceIn(minPx, maxPx)
+    }
+
+    /**
+     * ComposeView whose attach step cannot take the process down: the first composition runs inside
+     * `onAttachedToWindow`, outside any of our try/catch blocks. A failure is written to the crash log instead.
+     */
+    private class SafeComposeView(context: Context) : AbstractComposeView(context) {
+        private val content = androidx.compose.runtime.mutableStateOf<(@androidx.compose.runtime.Composable () -> Unit)?>(null)
+
+        fun setContent(body: @androidx.compose.runtime.Composable () -> Unit) {
+            content.value = body
+        }
+
+        @androidx.compose.runtime.Composable
+        override fun Content() {
+            content.value?.invoke()
+        }
+
+        override fun onAttachedToWindow() {
+            try {
+                super.onAttachedToWindow()
+            } catch (error: Throwable) {
+                KeyboardLog.e("ComposeView attach failed", error)
+                CrashLog.note(context, "ComposeView attach failed", error)
+            }
+        }
     }
 
     /** Frame that always measures to an exact height, whatever LayoutParams the framework assigns. */
