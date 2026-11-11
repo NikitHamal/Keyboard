@@ -1,5 +1,9 @@
 # Nepali Keyboard
 
+> **v1.1** - ONNX Runtime removed: TinyLM now runs on a ~300-line pure-Kotlin int8 transformer core (`tlm/TlmNet.kt`) fed by `.tlmw` weight files
+> (`tools/pack_tlm.py`). Release APK: **~80 MB -> ~8 MB**, no native code, no JNI crashes. Settings app redesigned in Material 3 Expressive,
+> IME status detection fixed, local crash log (Settings -> More -> Diagnostics).
+
 An offline Nepali (Devanagari) keyboard for Android, built with Kotlin and
 Jetpack Compose. Romanized typing is the primary input path: type `namaste` and
 get नमस्ते, `dhanyabad` → धन्यवाद, `nepal` → नेपाल, `mero` → मेरो.

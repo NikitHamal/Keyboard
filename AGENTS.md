@@ -20,6 +20,8 @@ Supporting packages: `data` (DataStore repositories + models), `engine`
 
 Hard constraints that define the product:
 
+* **No native code.** TinyLM inference is pure Kotlin (`tlm/TlmNet.kt`); never re-add onnxruntime / tflite (APK size, JNI crashes).
+
 * **No network permission.** `AndroidManifest.xml` declares no `uses-permission`
   elements and no `uses-feature` requirements beyond the IME binding. Any change
   that adds a permission requires a design decision, not a commit.

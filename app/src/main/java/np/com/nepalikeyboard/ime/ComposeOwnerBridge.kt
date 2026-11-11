@@ -64,6 +64,10 @@ internal class ComposeOwnerBridge(
     /** Installs the owners on [hostView] and attaches the saved state registry. */
     fun attachToViewTree() {
         savedStateController.performAttach()
+        // Without performRestore the registry stays "not restored" and any rememberSaveable / SavedStateHandle
+        // inside the composition throws IllegalStateException the first time it is read.
+        savedStateController.performRestore(null)
+        if (lifecycleRegistry.currentState == Lifecycle.State.INITIALIZED) lifecycleRegistry.currentState = Lifecycle.State.CREATED
         hostView.setViewTreeLifecycleOwner(this)
         hostView.setViewTreeViewModelStoreOwner(this)
         hostView.setViewTreeSavedStateRegistryOwner(this)
