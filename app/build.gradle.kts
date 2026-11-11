@@ -20,6 +20,11 @@ android {
 
         vectorDrawables.useSupportLibrary = true
 
+        // ONNX Runtime ships four ABIs (~15 MB each); real devices only need the ARM ones.
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -72,6 +77,9 @@ android {
     }
 
     packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
         resources {
             excludes += setOf(
                 "/META-INF/{AL2.0,LGPL2.1}",
