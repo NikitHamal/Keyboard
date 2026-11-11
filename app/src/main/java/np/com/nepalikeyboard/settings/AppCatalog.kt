@@ -1,5 +1,6 @@
 package np.com.nepalikeyboard.settings
 
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
@@ -30,32 +31,51 @@ data class ImeStatus(
  */
 object AppCatalog {
 
-    /** Component id of our own IME service. */
-    fun imeId(context: Context): String = "${context.packageName}/${NepaliImeService::class.java.name}"
+    /** Our IME as a [ComponentName] (the platform identifies IMEs by `ComponentName.flattenToShortString()`). */
+    fun component(context: Context): ComponentName = ComponentName(context.packageName, NepaliImeService::class.java.name)
+
+    /**
+     * Component id of our own IME service in the platform's own notation (`pkg/.ime.NepaliImeService`).
+     * The previous implementation compared against `pkg/<full class name>`, which never matched
+     * `InputMethodInfo.id` - that is why the setup status never turned green.
+     */
+    fun imeId(context: Context): String = component(context).flattenToShortString()
+
+    private fun same(id: String?, cn: ComponentName): Boolean {
+        if (id.isNullOrBlank()) return false
+        return ComponentName.unflattenFromString(id.substringBefore(';')) == cn
+    }
 
     fun status(context: Context): ImeStatus {
-        val manager = inputMethodManager(context) ?: return ImeStatus()
-        return try {
-            val id = imeId(context)
-            val enabled = manager.enabledInputMethodList.orEmpty()
-            val all = manager.inputMethodList.orEmpty()
-            ImeStatus(
-                installed = all.any { it.id == id },
-                enabled = enabled.any { it.id == id },
-                selected = selectedImeId(context) == id,
-            )
+        val cn = component(context)
+        var installed = false
+        var enabled = false
+        try {
+            val manager = inputMethodManager(context)
+            installed = manager?.inputMethodList.orEmpty().any { same(it.id, cn) }
+            enabled = manager?.enabledInputMethodList.orEmpty().any { same(it.id, cn) }
         } catch (error: RuntimeException) {
             KeyboardLog.w("IME status query failed: ${error.message}")
-            ImeStatus()
         }
+        // The secure settings are the source of truth the system settings screen uses; they also
+        // cover the (rare) OEM builds where the IMM lists are filtered.
+        try {
+            val cr = context.contentResolver
+            val list = Settings.Secure.getString(cr, Settings.Secure.ENABLED_INPUT_METHODS).orEmpty()
+            if (list.split(':').any { same(it, cn) }) enabled = true
+        } catch (error: RuntimeException) {
+            KeyboardLog.w("Unable to read enabled_input_methods: ${error.message}")
+        }
+        val selected = same(selectedImeId(context), cn)
+        return ImeStatus(installed = installed || enabled, enabled = enabled || selected, selected = selected)
     }
 
     /** Every enabled keyboard except ours, so the user can see where they are. */
     fun otherEnabledKeyboards(context: Context): List<InputMethodInfo> {
         val manager = inputMethodManager(context) ?: return emptyList()
         return try {
-            val id = imeId(context)
-            manager.enabledInputMethodList.orEmpty().filter { it.id != id }
+            val cn = component(context)
+            manager.enabledInputMethodList.orEmpty().filter { !same(it.id, cn) }
         } catch (error: RuntimeException) {
             KeyboardLog.w("IME list query failed: ${error.message}")
             emptyList()

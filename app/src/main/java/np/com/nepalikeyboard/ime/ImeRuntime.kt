@@ -30,7 +30,13 @@ class ImeRuntime private constructor(
     private val context: Context,
 ) {
 
-    val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val scope: CoroutineScope = CoroutineScope(
+        SupervisorJob() + Dispatchers.Default +
+            kotlinx.coroutines.CoroutineExceptionHandler { _, error ->
+                // A failing background job must never take the keyboard down; keep a record instead.
+                np.com.nepalikeyboard.util.CrashLog.note(context, "background coroutine failed", error)
+            },
+    )
 
     val settings: SettingsRepository = SettingsRepository.get(context)
     val clipboard: ClipboardRepository = ClipboardRepository.get(context)
@@ -106,6 +112,7 @@ class ImeRuntime private constructor(
             } catch (error: Throwable) {
                 // Never take the keyboard down: the deterministic phonetic engine keeps working.
                 KeyboardLog.e("TinyLM load failed", error)
+                np.com.nepalikeyboard.util.CrashLog.note(context, "TinyLM load failed", error)
             } finally {
                 tlmLoading = false
             }

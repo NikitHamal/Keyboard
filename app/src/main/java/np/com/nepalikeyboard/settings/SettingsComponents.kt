@@ -1,5 +1,19 @@
 package np.com.nepalikeyboard.settings
 
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material3.Icon
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.ui.draw.scale
+import np.com.nepalikeyboard.ui.theme.ExpressiveMotion
+import np.com.nepalikeyboard.ui.theme.displayStyle
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,6 +28,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Switch
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -84,18 +100,17 @@ fun rememberSettingsWriter(): SettingsWriter {
 }
 
 // ---------------------------------------------------------------------------
-// Building blocks
+// Building blocks - Material 3 Expressive: oversized radii, tonal containers, springy press + shape morph
 // ---------------------------------------------------------------------------
 
 @Composable
 fun SettingsSection(title: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val tokens = LocalKeyboardTokens.current
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
-            text = title,
-            style = latinStyle(11.sp, FontWeight.SemiBold),
-            color = tokens.iconTintActive,
-            modifier = Modifier.padding(start = 4.dp, top = 10.dp, bottom = 4.dp),
+            text = title.uppercase(),
+            style = latinStyle(11.5.sp, FontWeight.Bold, letterSpacing = 1.2.sp),
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(start = 10.dp, top = 20.dp, bottom = 8.dp),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -107,18 +122,29 @@ fun SettingsSection(title: String, modifier: Modifier = Modifier, content: @Comp
 fun SettingsCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
+    containerColor: androidx.compose.ui.graphics.Color = LocalKeyboardTokens.current.panelSurface,
     content: @Composable () -> Unit,
 ) {
-    val tokens = LocalKeyboardTokens.current
-    val shape = RoundedCornerShape(22.dp)
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val scale by animateFloatAsState(if (pressed) 0.975f else 1f, ExpressiveMotion.snappy(), label = "cardScale")
+    val corner by animateDpAsState(if (pressed) 14.dp else 26.dp, ExpressiveMotion.snappy(), label = "cardCorner")
+    val shape = RoundedCornerShape(corner)
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 3.dp)
+            .padding(vertical = 2.dp)
+            .scale(scale)
             .clip(shape)
-            .background(tokens.panelSurface)
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .background(containerColor)
+            .then(
+                if (onClick != null) {
+                    Modifier.clickable(interactionSource = source, indication = LocalIndication.current, onClick = onClick)
+                } else {
+                    Modifier
+                },
+            )
+            .padding(horizontal = 18.dp, vertical = 15.dp),
     ) {
         content()
     }
@@ -132,29 +158,32 @@ fun SettingSwitchRow(
     onCheckedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tokens = LocalKeyboardTokens.current
+    val scheme = MaterialTheme.colorScheme
     SettingsCard(modifier = modifier, onClick = { onCheckedChange(!checked) }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = latinStyle(14.sp, FontWeight.Medium),
-                    color = tokens.suggestionText,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Text(text = title, style = latinStyle(15.5.sp, FontWeight.SemiBold), color = scheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (description != null) {
                     Text(
                         text = description,
-                        style = latinStyle(11.sp),
-                        color = tokens.iconTint,
-                        maxLines = 3,
+                        style = latinStyle(12.5.sp),
+                        color = scheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp),
+                        maxLines = 4,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
-            Spacer(Modifier.width(10.dp))
-            Switch(checked = checked, onCheckedChange = onCheckedChange)
+            Spacer(Modifier.width(14.dp))
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                thumbContent = if (checked) {
+                    { Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(SwitchDefaults.IconSize)) }
+                } else {
+                    null
+                },
+            )
         }
     }
 }
@@ -166,47 +195,36 @@ fun SettingInfoRow(
     description: String? = null,
     modifier: Modifier = Modifier,
 ) {
-    val tokens = LocalKeyboardTokens.current
+    val scheme = MaterialTheme.colorScheme
     SettingsCard(modifier = modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = latinStyle(14.sp, FontWeight.Medium),
-                    color = tokens.suggestionText,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                Text(text = title, style = latinStyle(15.5.sp, FontWeight.SemiBold), color = scheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (description != null) {
                     Text(
                         text = description,
-                        style = latinStyle(11.sp),
-                        color = tokens.iconTint,
-                        maxLines = 4,
+                        style = latinStyle(12.5.sp),
+                        color = scheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp),
+                        maxLines = 5,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
-            Spacer(Modifier.width(10.dp))
-            Text(
-                text = value,
-                style = latinStyle(12.sp, FontWeight.SemiBold),
-                color = tokens.iconTint,
-                maxLines = 1,
-            )
+            Spacer(Modifier.width(12.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(scheme.secondaryContainer)
+                    .padding(horizontal = 12.dp, vertical = 6.dp),
+            ) {
+                Text(text = value, style = latinStyle(12.5.sp, FontWeight.Bold), color = scheme.onSecondaryContainer, maxLines = 1)
+            }
         }
     }
 }
 
-/**
- * Horizontal single-choice row: one pill per option, the selected one tinted.
- *
- * [labelOf] is a `@Composable` lambda rather than a plain one so that callers can
- * resolve their labels with `stringResource`, which is itself composable. Making
- * it plain would force every caller to hoist the resource lookups into a
- * precomputed map, which is both boilerplate and a correctness hazard: a map
- * built once would keep serving the old language after a locale change.
- */
+/** Connected button group: the selected segment morphs into a full pill, the others keep a soft corner. */
 @Composable
 fun <T> SettingChoiceRow(
     options: List<T>,
@@ -216,34 +234,33 @@ fun <T> SettingChoiceRow(
     modifier: Modifier = Modifier,
     devanagari: (T) -> Boolean = { false },
 ) {
-    val tokens = LocalKeyboardTokens.current
+    val scheme = MaterialTheme.colorScheme
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
+            .padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         for (option in options) {
             val isSelected = option == selected
             val text = labelOf(option)
+            val corner by animateDpAsState(if (isSelected) 24.dp else 12.dp, ExpressiveMotion.snappy(), label = "segCorner")
+            val bg by animateColorAsState(if (isSelected) scheme.primary else scheme.surfaceContainerHigh, ExpressiveMotion.smooth(180), label = "segBg")
+            val fg by animateColorAsState(if (isSelected) scheme.onPrimary else scheme.onSurface, ExpressiveMotion.smooth(180), label = "segFg")
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .heightIn(min = 40.dp)
-                    .clip(RoundedCornerShape(tokens.functionCornerRadius))
-                    .background(if (isSelected) tokens.accentKeyBackground else tokens.panelSurface)
+                    .heightIn(min = 48.dp)
+                    .clip(RoundedCornerShape(corner))
+                    .background(bg)
                     .clickable { onSelect(option) }
-                    .padding(horizontal = 6.dp),
+                    .padding(horizontal = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = text,
-                    style = if (devanagari(option)) {
-                        devanagariStyle(14.sp, FontWeight.Medium)
-                    } else {
-                        latinStyle(12.sp, FontWeight.Medium)
-                    },
-                    color = if (isSelected) tokens.accentKeyLabel else tokens.suggestionText,
+                    style = if (devanagari(option)) devanagariStyle(14.sp, FontWeight.Medium) else latinStyle(13.sp, FontWeight.SemiBold),
+                    color = fg,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -259,22 +276,25 @@ fun SettingActionRow(
     modifier: Modifier = Modifier,
     emphasised: Boolean = false,
 ) {
-    val tokens = LocalKeyboardTokens.current
+    val scheme = MaterialTheme.colorScheme
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    val corner by animateDpAsState(if (pressed) 14.dp else 28.dp, ExpressiveMotion.snappy(), label = "btnCorner")
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = 2.dp)
-            .heightIn(min = 44.dp)
-            .clip(RoundedCornerShape(tokens.functionCornerRadius))
-            .background(if (emphasised) tokens.accentKeyBackground else tokens.panelSurface)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp),
-        contentAlignment = Alignment.CenterStart,
+            .padding(vertical = 3.dp)
+            .heightIn(min = 54.dp)
+            .clip(RoundedCornerShape(corner))
+            .background(if (emphasised) scheme.primary else scheme.secondaryContainer)
+            .clickable(interactionSource = source, indication = LocalIndication.current, onClick = onClick)
+            .padding(horizontal = 20.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
-            style = latinStyle(14.sp, FontWeight.SemiBold),
-            color = if (emphasised) tokens.accentKeyLabel else tokens.iconTintActive,
+            style = latinStyle(15.sp, FontWeight.Bold),
+            color = if (emphasised) scheme.onPrimary else scheme.onSecondaryContainer,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
         )
@@ -283,11 +303,22 @@ fun SettingActionRow(
 
 @Composable
 fun SettingStatusDot(active: Boolean, tokens: KeyboardTokens) {
+    val scheme = MaterialTheme.colorScheme
+    val bg by animateColorAsState(if (active) scheme.primary else scheme.surfaceContainerHighest, ExpressiveMotion.smooth(220), label = "dotBg")
+    val size by animateDpAsState(if (active) 26.dp else 22.dp, ExpressiveMotion.bouncy(), label = "dotSize")
     Box(
         modifier = Modifier
-            .width(10.dp)
-            .height(10.dp)
-            .clip(RoundedCornerShape(5.dp))
-            .background(if (active) tokens.iconTintActive else tokens.divider),
-    )
+            .size(26.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(size)
+                .clip(androidx.compose.foundation.shape.CircleShape)
+                .background(bg),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (active) Icon(Icons.Rounded.Check, contentDescription = null, tint = scheme.onPrimary, modifier = Modifier.size(16.dp))
+        }
+    }
 }

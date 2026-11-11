@@ -25,6 +25,7 @@ class NepaliKeyboardApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        np.com.nepalikeyboard.util.CrashLog.install(this)
         val runtime = ImeRuntime.get(applicationContext)
         // Idempotent and non-blocking: repeated calls are a volatile read.
         runtime.ensureLexicon()
