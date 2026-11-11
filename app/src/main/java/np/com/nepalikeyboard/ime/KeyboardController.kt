@@ -490,6 +490,23 @@ internal class KeyboardController(
             refreshCandidates()
             return
         }
+        // Double space after a Devanagari word turns into danda + space (Gboard's "double-space period").
+        if (mode != KeyboardMode.ENGLISH) {
+            val before = composer.readTextBefore(ic, 2)
+            if (before != null && before.length == 2 && before[1] == ' ' &&
+                before[0] in '\u0900'..'\u097F' && before[0] != '\u0964'
+            ) {
+                try {
+                    ic.deleteSurroundingText(1, 0)
+                } catch (_: RuntimeException) {
+                }
+                composer.commitText(ic, "\u0964 ", addSpaceAfter = false, devanagariDigits = false)
+                lastCommittedWord = null
+                updateShiftAfterEdit()
+                refreshCandidates()
+                return
+            }
+        }
         composer.commitText(ic, " ", addSpaceAfter = false, devanagariDigits = false)
         lastCommittedWord = null
         updateShiftAfterEdit()
@@ -664,8 +681,15 @@ internal class KeyboardController(
             }
             lastCommittedWord = candidate.text
             composer.clearBuffer()
+            // Like Gboard: accepting a suggestion leaves the caret ready for the next word.
+            composer.commitText(ic, " ", addSpaceAfter = false, devanagariDigits = false)
         } else {
-            composer.commitText(ic, candidate.text, addSpaceAfter = false, devanagariDigits = false)
+            composer.commitText(
+                ic,
+                candidate.text,
+                addSpaceAfter = candidate.kind == CandidateKind.PREDICTION,
+                devanagariDigits = false,
+            )
             learnWord(candidate.text, roman = "")
         }
         composingPreview = ""
