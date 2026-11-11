@@ -459,6 +459,7 @@ internal class KeyboardController(
             return
         }
 
+        composer.latinInField = runtime.tlm != null && !editor.sensitive
         val preview = composer.typeRoman(ic, text, snapshot.devanagariNumerals)
         composingPreview = preview ?: composer.previewTransliteration(snapshot.devanagariNumerals)
         if (shift == ShiftState.AUTO || shift == ShiftState.ON) shift = ShiftState.OFF
@@ -517,7 +518,8 @@ internal class KeyboardController(
         //    the whole word. The editor only ever sees a complete replacement, so
         //    a word can never end up half-deleted or half-transliterated.
         if (composer.hasRomanInput) {
-            val preview = composer.backspaceRoman(ic, snapshot.devanagariNumerals)
+            composer.latinInField = runtime.tlm != null && !host.editorDescriptor.sensitive
+        val preview = composer.backspaceRoman(ic, snapshot.devanagariNumerals)
             composingPreview = preview.orEmpty()
             publish()
             refreshCandidates()
@@ -619,8 +621,9 @@ internal class KeyboardController(
         if (composer.romanLength > 1) return leftCtx
         val ic = host.inputConnection ?: return ""
         val before = composer.readTextBefore(ic, LEFT_CONTEXT_CHARS) ?: ""
-        leftCtx = if (composingPreview.isNotEmpty() && before.endsWith(composingPreview)) {
-            before.substring(0, before.length - composingPreview.length)
+        val field = composer.composingFieldText(composingPreview)
+        leftCtx = if (field.isNotEmpty() && before.endsWith(field)) {
+            before.substring(0, before.length - field.length)
         } else {
             before
         }
@@ -856,14 +859,6 @@ internal class KeyboardController(
         if (generation != this.generation) return
         this.candidates = candidates
         this.candidatesLoading = false
-        if (!predictionOnly && composer.hasRomanInput) {
-            val top = candidates.firstOrNull { it.kind == CandidateKind.TRANSLITERATION || it.kind == CandidateKind.LITERAL }
-            val ic = host.inputConnection
-            if (top != null && ic != null && top.kind == CandidateKind.TRANSLITERATION && top.text != composingPreview) {
-                // The model's pick replaces the instant deterministic preview inside the composing region.
-                if (composer.showComposing(ic, top.text)) composingPreview = top.text
-            }
-        }
         publish()
     }
 
@@ -878,8 +873,9 @@ internal class KeyboardController(
         val ic = host.inputConnection ?: return null
         val before = composer.readTextBefore(ic, CONTEXT_LOOKBACK) ?: return null
         if (before.isEmpty()) return null
-        val stripped = if (composingPreview.isNotEmpty() && before.endsWith(composingPreview)) {
-            before.substring(0, before.length - composingPreview.length)
+        val field = composer.composingFieldText(composingPreview)
+        val stripped = if (field.isNotEmpty() && before.endsWith(field)) {
+            before.substring(0, before.length - field.length)
         } else {
             before
         }

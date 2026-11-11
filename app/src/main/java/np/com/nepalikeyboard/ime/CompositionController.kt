@@ -162,12 +162,23 @@ internal class CompositionController(private val host: ImeHost) {
         return previewBuilder.toString()
     }
 
+    /**
+     * When true (TinyLM active) the typed Latin letters stay in the editor's composing region, like
+     * Gboard's transliteration, and the Devanagari word lives in the suggestion strip until commit.
+     * That keeps the field stable while the model refines its pick on every keystroke.
+     */
+    var latinInField: Boolean = false
+
+    /** Exactly what the composing region currently shows. */
+    fun composingFieldText(fallbackPreview: String): String =
+        if (latinInField) buffer.toString() else fallbackPreview
+
     private fun render(ic: InputConnection, devanagariDigits: Boolean): String {
         previewBuilder.setLength(0)
         PhoneticEngine.transliterateInto(buffer, previewBuilder, devanagariDigits)
         val preview = previewBuilder.toString()
         try {
-            ic.setComposingText(preview, 1)
+            ic.setComposingText(if (latinInField) buffer.toString() else preview, 1)
             composingActive = true
         } catch (_: RuntimeException) {
             composingActive = false
