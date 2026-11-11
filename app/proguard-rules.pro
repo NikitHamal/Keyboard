@@ -78,7 +78,5 @@
 -keepattributes SourceFile,LineNumberTable
 -renamesourcefileattribute SourceFile
 
-# ---- ONNX Runtime (JNI) + TinyLM engine ------------------------------------
--keep class ai.onnxruntime.** { *; }
--dontwarn ai.onnxruntime.**
+# ---- TinyLM engine (pure Kotlin, no native code) ---------------------------
 -keep class np.com.nepalikeyboard.tlm.** { *; }

@@ -20,11 +20,6 @@ android {
 
         vectorDrawables.useSupportLibrary = true
 
-        // ONNX Runtime ships four ABIs (~15 MB each); real devices only need the ARM ones.
-        ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
-        }
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -59,10 +54,6 @@ android {
                 "proguard-rules.pro",
             )
             signingConfig = signingConfigs.getByName("release")
-            ndk {
-                // Universal APK: no ABI split configuration exists in this project.
-                abiFilters.clear()
-            }
         }
     }
 
@@ -77,9 +68,6 @@ android {
     }
 
     packaging {
-        jniLibs {
-            useLegacyPackaging = true
-        }
         resources {
             excludes += setOf(
                 "/META-INF/{AL2.0,LGPL2.1}",
@@ -114,7 +102,7 @@ android {
     // unused variants, and stable resource ids for the IME's baked-in layouts.
     androidResources {
         generateLocaleConfig = false
-        noCompress += listOf("onnx", "tsv")
+        // Keep every asset deflated: the lexicon / weights shrink ~2x inside the APK.
     }
 }
 
@@ -149,7 +137,6 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
-    implementation(libs.onnxruntime.android)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 

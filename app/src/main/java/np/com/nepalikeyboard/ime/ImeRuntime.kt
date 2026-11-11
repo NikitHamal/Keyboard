@@ -100,7 +100,7 @@ class ImeRuntime private constructor(
         scope.launch {
             val started = android.os.SystemClock.elapsedRealtime()
             try {
-                tlm = TlmLoader.load(context)
+                tlm = TlmLoader.load { name -> context.assets.open("tlm/$name").use { it.readBytes() } }
                 _tlmReady.value = true
                 KeyboardLog.d("TinyLM ready in ${android.os.SystemClock.elapsedRealtime() - started} ms")
             } catch (error: Throwable) {

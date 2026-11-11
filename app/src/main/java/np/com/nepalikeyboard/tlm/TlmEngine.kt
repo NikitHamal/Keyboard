@@ -1,11 +1,6 @@
 // Port of transliterationlm hybrid engine (model/hybrid.py, web/tlm.js) - synced from NikitHamal/transliterationlm @ 8721d51. See tools/sync_tlm.sh.
 package np.com.nepalikeyboard.tlm
 
-import ai.onnxruntime.OnnxTensor
-import ai.onnxruntime.OrtEnvironment
-import ai.onnxruntime.OrtSession
-import java.nio.FloatBuffer
-import java.nio.LongBuffer
 import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.ln1p
@@ -24,20 +19,6 @@ interface Neural {
 interface CtxScorer {
     val vocab: Map<String, Int>
     fun score(win: IntArray, cand: IntArray): FloatArray
-}
-
-class OrtCtx(private val env: OrtEnvironment, private val sess: OrtSession, words: List<String>) : CtxScorer {
-    override val vocab: Map<String, Int> = words.withIndex().associate { it.value to it.index }
-    @Suppress("UNCHECKED_CAST")
-    override fun score(win: IntArray, cand: IntArray): FloatArray {
-        val a = OnnxTensor.createTensor(env, LongBuffer.wrap(LongArray(win.size) { win[it].toLong() }), longArrayOf(1, win.size.toLong()))
-        val b = OnnxTensor.createTensor(env, LongBuffer.wrap(LongArray(cand.size) { cand[it].toLong() }), longArrayOf(1, cand.size.toLong()))
-        try {
-            sess.run(mapOf("ctx" to a, "cand" to b)).use { r -> return (r[0].value as Array<FloatArray>)[0] }
-        } finally {
-            a.close(); b.close()
-        }
-    }
 }
 
 object Keys {
@@ -440,60 +421,4 @@ class HybridEngine(
     fun keepsLatin(t: String) = t.lowercase().trimEnd('\'') in keep || (t.length >= 2 && t == t.uppercase())
 
     fun transliterate(text: String, byakaran: Boolean = true): String = analyze(text, byakaran).joinToString("") { it.out }
-}
-
-/** ONNX Runtime (Android) neural backend: encoder.int8.onnx + decoder.int8.onnx (decoder returns log-probs for ALL positions). */
-class OrtNeural(private val env: OrtEnvironment, private val enc: OrtSession, private val dec: OrtSession, vocabSrc: List<String>, private val tgt: List<String>, private val maxSrc: Int, private val d: Int) : Neural {
-    private val s2i = vocabSrc.withIndex().associate { it.value to it.index }; private val t2i = tgt.withIndex().associate { it.value to it.index }
-    private class Enc(val ids: LongArray, val mem: FloatArray)
-
-    override fun encode(word: String, lang: String): Any {
-        val ids = ArrayList<Long>(); ids.add(s2i["<$lang>"]!!.toLong())
-        for (c in word) s2i[c.toString()]?.let { ids.add(it.toLong()) }
-        val a = ids.take(maxSrc).toLongArray()
-        OnnxTensor.createTensor(env, LongBuffer.wrap(a), longArrayOf(1, a.size.toLong())).use { src ->
-            enc.run(mapOf("src" to src)).use { r -> val m = (r[0].value as Array<Array<FloatArray>>)[0]; return Enc(a, FloatArray(a.size * d) { m[it / d][it % d] }) }
-        }
-    }
-
-    private fun tile(e: Enc, k: Int): Pair<OnnxTensor, OnnxTensor> {
-        val s = e.ids.size; val mem = FloatArray(k * s * d); val src = LongArray(k * s)
-        for (i in 0 until k) { e.mem.copyInto(mem, i * s * d); e.ids.copyInto(src, i * s) }
-        return OnnxTensor.createTensor(env, FloatBuffer.wrap(mem), longArrayOf(k.toLong(), s.toLong(), d.toLong())) to OnnxTensor.createTensor(env, LongBuffer.wrap(src), longArrayOf(k.toLong(), s.toLong()))
-    }
-
-    override fun score(enc: Any, cands: List<String>): FloatArray {
-        val e = enc as Enc; val out = FloatArray(cands.size) { -1e9f }; val V = tgt.size
-        val ok = cands.indices.filter { i -> cands[i].length <= 32 && cands[i].all { t2i.containsKey(it.toString()) } }
-        if (ok.isEmpty()) return out
-        val lm = ok.maxOf { cands[it].length } + 1; val m = ok.size; val tg = LongArray(m * lm); val lab = IntArray(m * lm)
-        ok.forEachIndexed { a, ci -> val t = listOf(1) + cands[ci].map { t2i[it.toString()]!! } + listOf(2); for (j in 0 until t.size - 1) { tg[a * lm + j] = t[j].toLong(); lab[a * lm + j] = t[j + 1] } }
-        val (memT, srcT) = tile(e, m)
-        OnnxTensor.createTensor(env, LongBuffer.wrap(tg), longArrayOf(m.toLong(), lm.toLong())).use { tgT ->
-            dec.run(mapOf("mem" to memT, "src" to srcT, "tgt" to tgT)).use { r ->
-                val lp = r[0].value as Array<Array<FloatArray>>
-                ok.forEachIndexed { a, ci -> var s = 0f; for (j in 0 until lm) { if (lab[a * lm + j] == 0) break; s += lp[a][j][lab[a * lm + j]] }; out[ci] = s }
-            }
-        }
-        memT.close(); srcT.close(); return out
-    }
-
-    override fun beam(enc: Any, k: Int): List<Pair<String, Float>> {
-        val e = enc as Enc; val V = tgt.size; val (memT, srcT) = tile(e, k)
-        var ys = List(k) { mutableListOf(1) }; var sc = FloatArray(k) { if (it == 0) 0f else -1e9f }; var fin = BooleanArray(k)
-        for (step in 0 until 34) {
-            val l = ys[0].size; val tg = LongArray(k * l) { ys[it / l][it % l].toLong() }
-            val lp = OnnxTensor.createTensor(env, LongBuffer.wrap(tg), longArrayOf(k.toLong(), l.toLong())).use { tgT -> dec.run(mapOf("mem" to memT, "src" to srcT, "tgt" to tgT)).use { r -> (r[0].value as Array<Array<FloatArray>>).map { it[l - 1] } } }
-            val cand = ArrayList<Triple<Float, Int, Int>>()
-            for (b in 0 until k) for (v in 0 until V) cand.add(Triple(if (fin[b]) (if (v == 0) sc[b] else -1e9f) else (if (v <= 1) -1e9f else sc[b] + lp[b][v]), b, v))
-            cand.sortWith(compareBy<Triple<Float, Int, Int>>({ -it.first }, { it.second * V + it.third }))
-            val top = cand.take(k)
-            ys = top.map { (_, b, v) -> (ys[b] + v).toMutableList() }; fin = BooleanArray(k) { fin[top[it].second] || top[it].third == 2 }.also { }; sc = FloatArray(k) { top[it].first }
-            if (fin.all { it }) break
-        }
-        memT.close(); srcT.close()
-        val out = LinkedHashMap<String, Float>()
-        for (b in 0 until k) { val sb = StringBuilder(); for (t in ys[b].drop(1)) { if (t == 0 || t == 2) break; sb.append(tgt[t]) }; val w = sb.toString(); if (w.isNotEmpty() && w !in out && sc[b] > -1e8f) out[w] = sc[b] }
-        return out.map { it.key to it.value }
-    }
 }
