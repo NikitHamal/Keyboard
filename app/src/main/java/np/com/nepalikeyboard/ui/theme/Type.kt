@@ -27,6 +27,7 @@ private fun variable(res: Int, weight: FontWeight): Font = Font(
 
 /** Figtree (variable, one 60 KB file for every weight): friendly, open, highly legible UI + key-cap face. */
 val UiFamily: FontFamily = FontFamily(
+    variable(R.font.figtree, FontWeight.Light),
     variable(R.font.figtree, FontWeight.Normal),
     variable(R.font.figtree, FontWeight.Medium),
     variable(R.font.figtree, FontWeight.SemiBold),
@@ -42,10 +43,13 @@ val DisplayFamily: FontFamily = FontFamily(
     variable(R.font.outfit, FontWeight.ExtraBold),
 )
 
+/** Noto Sans Devanagari (variable, one file): light, even strokes at any weight from Light to Bold. */
 val NotoSansDevanagariFamily: FontFamily = FontFamily(
-    Font(R.font.noto_sans_devanagari_regular, FontWeight.Normal),
-    Font(R.font.noto_sans_devanagari_medium, FontWeight.Medium),
-    Font(R.font.noto_sans_devanagari_bold, FontWeight.Bold),
+    variable(R.font.noto_sans_devanagari_vf, FontWeight.Light),
+    variable(R.font.noto_sans_devanagari_vf, FontWeight.Normal),
+    variable(R.font.noto_sans_devanagari_vf, FontWeight.Medium),
+    variable(R.font.noto_sans_devanagari_vf, FontWeight.SemiBold),
+    variable(R.font.noto_sans_devanagari_vf, FontWeight.Bold),
 )
 
 /**
@@ -57,7 +61,7 @@ val NotoSansDevanagariFamily: FontFamily = FontFamily(
  */
 fun devanagariStyle(
     size: TextUnit,
-    weight: FontWeight = FontWeight.Medium,
+    weight: FontWeight = FontWeight.Normal,
     lineHeightMultiplier: Float = 1.42f,
     letterSpacing: TextUnit = 0.sp,
 ): TextStyle = TextStyle(
@@ -75,7 +79,7 @@ fun devanagariStyle(
 /** Latin key-cap / UI style with an explicit line box (Figtree). */
 fun latinStyle(
     size: TextUnit,
-    weight: FontWeight = FontWeight.Medium,
+    weight: FontWeight = FontWeight.Normal,
     lineHeightMultiplier: Float = 1.28f,
     letterSpacing: TextUnit = 0.sp,
 ): TextStyle = TextStyle(
@@ -116,11 +120,11 @@ val KeyboardTypography: Typography = Typography(
     displayLarge = displayStyle(57.sp, FontWeight.Normal, 1.12f, (-0.25).sp),
     displayMedium = displayStyle(45.sp, FontWeight.Normal, 1.16f),
     displaySmall = displayStyle(36.sp, FontWeight.Normal, 1.22f),
-    headlineLarge = displayStyle(32.sp, FontWeight.SemiBold, 1.25f),
-    headlineMedium = displayStyle(28.sp, FontWeight.SemiBold, 1.28f),
-    headlineSmall = displayStyle(24.sp, FontWeight.SemiBold, 1.32f),
-    titleLarge = displayStyle(22.sp, FontWeight.SemiBold, 1.27f),
-    titleMedium = latinStyle(16.sp, FontWeight.SemiBold, 1.5f, 0.15.sp),
+    headlineLarge = displayStyle(32.sp, FontWeight.Medium, 1.25f),
+    headlineMedium = displayStyle(28.sp, FontWeight.Medium, 1.28f),
+    headlineSmall = displayStyle(24.sp, FontWeight.Medium, 1.32f),
+    titleLarge = displayStyle(22.sp, FontWeight.Medium, 1.27f),
+    titleMedium = latinStyle(16.sp, FontWeight.Medium, 1.5f, 0.15.sp),
     titleSmall = latinStyle(14.sp, FontWeight.Medium, 1.43f, 0.1.sp),
     bodyLarge = latinStyle(16.sp, FontWeight.Normal, 1.5f, 0.15.sp),
     bodyMedium = latinStyle(14.sp, FontWeight.Normal, 1.43f, 0.25.sp),

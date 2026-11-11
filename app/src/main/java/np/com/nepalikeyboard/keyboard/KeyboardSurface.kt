@@ -397,7 +397,7 @@ private fun KeyCap(
         if (hint != null) {
             Text(
                 text = hint,
-                style = latinStyle((labelSize.value * 0.46f).coerceAtLeast(8f).sp, FontWeight.Medium),
+                style = latinStyle((labelSize.value * 0.46f).coerceAtLeast(8f).sp, FontWeight.Normal),
                 color = tokens.functionKeyLabel.copy(alpha = 0.75f),
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -443,7 +443,6 @@ private fun KeyPreviewBubble(
                 scaleY = grow.value
                 transformOrigin = TransformOrigin(0.5f, 1f)
             }
-            .shadow(6.dp, shape)
             .clip(shape)
             .background(tokens.previewBackground),
         contentAlignment = Alignment.Center,
@@ -451,9 +450,9 @@ private fun KeyPreviewBubble(
         Text(
             text = key.label,
             style = if (devanagari) {
-                devanagariStyle(labelSize * 1.45f, FontWeight.Medium)
+                devanagariStyle(labelSize * 1.45f, FontWeight.Normal)
             } else {
-                latinStyle(labelSize * 1.5f, FontWeight.Medium)
+                latinStyle(labelSize * 1.5f, FontWeight.Normal)
             },
             color = tokens.previewLabel,
             softWrap = false,
@@ -482,10 +481,10 @@ private fun KeyContent(
             // the extras layer carries an independent vowel, and it must not be
             // drawn with the Latin family.
             key.labelStyle == KeyLabelStyle.DEVANAGARI || containsDevanagari(label) ->
-                devanagariStyle(labelSize, FontWeight.Medium)
+                devanagariStyle(labelSize, FontWeight.Normal)
 
-            key.labelStyle == KeyLabelStyle.ACTION -> latinStyle(actionSize * 1.1f, FontWeight.SemiBold)
-            else -> latinStyle(labelSize, FontWeight.Medium)
+            key.labelStyle == KeyLabelStyle.ACTION -> latinStyle(actionSize * 1.1f, FontWeight.Medium)
+            else -> latinStyle(labelSize, FontWeight.Normal)
         }
         Text(
             text = label,
@@ -503,7 +502,7 @@ private fun KeyContent(
     when (key.kind) {
         KeyKind.SPACE -> Text(
             text = scriptLabel,
-            style = latinStyle(actionSize, FontWeight.Medium),
+            style = latinStyle(actionSize, FontWeight.Normal),
             color = color,
             softWrap = false,
             maxLines = 1,
@@ -524,7 +523,7 @@ private fun KeyContent(
             } else {
                 Text(
                     text = actionLabel,
-                    style = latinStyle(actionSize * 1.2f, FontWeight.SemiBold),
+                    style = latinStyle(actionSize * 1.2f, FontWeight.Medium),
                     color = color,
                     softWrap = false,
                     maxLines = 1,
@@ -554,7 +553,7 @@ private fun KeyContent(
         } else {
             Text(
                 text = stringResource(key.labelRes),
-                style = latinStyle(actionSize * 1.05f, FontWeight.SemiBold),
+                style = latinStyle(actionSize * 1.05f, FontWeight.Medium),
                 color = color,
                 softWrap = false,
                 maxLines = 1,
@@ -596,7 +595,7 @@ private fun KeyContent(
             val resolved = if (key.labelRes != 0) stringResource(key.labelRes) else ""
             Text(
                 text = resolved,
-                style = latinStyle(actionSize * 1.05f, FontWeight.SemiBold),
+                style = latinStyle(actionSize * 1.05f, FontWeight.Medium),
                 color = color,
                 softWrap = false,
                 maxLines = 1,
@@ -654,7 +653,7 @@ private fun LongPressOverlay(
     ) {
         Text(
             text = key.label,
-            style = latinStyle(11.sp, FontWeight.SemiBold),
+            style = latinStyle(11.sp, FontWeight.Medium),
             color = tokens.suggestionText,
             modifier = Modifier.padding(start = 6.dp, bottom = 2.dp),
         )
@@ -680,7 +679,7 @@ private fun LongPressOverlay(
                 ) {
                     Text(
                         text = options[index],
-                        style = latinStyle(20.sp, FontWeight.Medium),
+                        style = latinStyle(20.sp, FontWeight.Normal),
                         color = if (selected) tokens.suggestionChipSelectedText else tokens.suggestionText,
                         softWrap = false,
                         maxLines = 1,

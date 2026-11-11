@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  "Na" keycap: a chunky 3D keycap carrying the Devanagari letter न (shirorekha, stem and bowl drawn as
-  round-capped strokes) with an amber transliteration spark. Everything sits inside the 66dp safe zone.
+  Keycap carrying the Devanagari letter ka with a saffron "A" badge (Roman to Nepali). All artwork stays inside
+  the 66dp adaptive safe zone (21..87 of the 108 viewport). Flat fills only.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -9,44 +9,43 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Keycap side wall (depth) -->
+    <!-- Keycap lip -->
     <path
-        android:fillColor="#FFB9A8FF"
-        android:pathData="M43,33.5h22a13,13 0 0 1 13,13v24a13,13 0 0 1 -13,13h-22a13,13 0 0 1 -13,-13v-24a13,13 0 0 1 13,-13z" />
+        android:fillColor="#FFF0D08A"
+        android:pathData="M42,33h24a14,14 0 0 1 14,14v18a14,14 0 0 1 -14,14h-24a14,14 0 0 1 -14,-14v-18a14,14 0 0 1 14,-14z" />
     <!-- Keycap top face -->
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M43,29h22a13,13 0 0 1 13,13v24a13,13 0 0 1 -13,13h-22a13,13 0 0 1 -13,-13v-24a13,13 0 0 1 13,-13z" />
-    <!-- Subtle inner dish -->
-    <path
-        android:fillColor="#FFF1ECFF"
-        android:pathData="M44,34h20a9,9 0 0 1 9,9v22a9,9 0 0 1 -9,9h-20a9,9 0 0 1 -9,-9v-22a9,9 0 0 1 9,-9z" />
+        android:fillColor="#FFFFF4DC"
+        android:pathData="M42,29h24a14,14 0 0 1 14,14v18a14,14 0 0 1 -14,14h-24a14,14 0 0 1 -14,-14v-18a14,14 0 0 1 14,-14z" />
 
-    <!-- Devanagari "na": shirorekha -->
+    <!-- ka: shirorekha -->
     <path
-        android:pathData="M39,45H69"
-        android:strokeColor="#FF4B2FD0"
+        android:pathData="M37,43H67"
+        android:strokeColor="#FF0F4C45"
         android:strokeLineCap="round"
-        android:strokeWidth="4.4" />
+        android:strokeWidth="3.6" />
     <!-- stem -->
     <path
-        android:pathData="M64,45V68"
-        android:strokeColor="#FF4B2FD0"
+        android:pathData="M60,43V66"
+        android:strokeColor="#FF0F4C45"
         android:strokeLineCap="round"
-        android:strokeWidth="4.4" />
+        android:strokeWidth="3.6" />
     <!-- bowl -->
     <path
-        android:pathData="M45,45V58C45,66 50.5,69.5 56.5,67.5C60,66.3 62.2,63.6 64,60"
-        android:strokeColor="#FF4B2FD0"
+        android:pathData="M60,51C49,46 41,53 44,60C47,66 55,65 60,58"
+        android:strokeColor="#FF0F4C45"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:strokeWidth="4.4" />
+        android:strokeWidth="3.6" />
 
-    <!-- Amber transliteration spark -->
+    <!-- Roman badge -->
     <path
-        android:fillColor="#FFFFB938"
-        android:pathData="M76,22c0.9,4.6 2.4,6.1 7,7c-4.6,0.9 -6.1,2.4 -7,7c-0.9,-4.6 -2.4,-6.1 -7,-7C73.6,28.1 75.1,26.6 76,22z" />
+        android:fillColor="#FFFFB547"
+        android:pathData="M73,30m-8.5,0a8.5,8.5 0 1,1 17,0a8.5,8.5 0 1,1 -17,0" />
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M31.5,28.5c0.5,2.4 1.2,3.1 3.6,3.6c-2.4,0.5 -3.1,1.2 -3.6,3.6c-0.5,-2.4 -1.2,-3.1 -3.6,-3.6C30.3,31.6 31,30.9 31.5,28.5z" />
+        android:pathData="M69.4,34.2L73,25.8L76.6,34.2M70.8,31.6H75.2"
+        android:strokeColor="#FF3B2300"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="1.9" />
 </vector>

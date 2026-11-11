@@ -65,13 +65,13 @@ fun SuggestionStrip(
             ) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(50))
+                        .clip(RoundedCornerShape(12.dp))
                         .background(tokens.suggestionChipSelected)
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                        .padding(horizontal = 12.dp, vertical = 4.dp),
                 ) {
                     Text(
                         text = preview,
-                        style = devanagariStyle(20.sp, FontWeight.SemiBold),
+                        style = devanagariStyle(19.sp, FontWeight.Normal),
                         color = tokens.suggestionChipSelectedText,
                         maxLines = 1,
                     )
@@ -94,7 +94,7 @@ fun SuggestionStrip(
         modifier = modifier
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = 2.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(1.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         for (index in candidates.indices) {
@@ -131,19 +131,19 @@ private fun CandidateChip(
         else -> tokens.suggestionText
     }
     val labelStyle = if (candidate.usesDevanagari) {
-        devanagariStyle(if (primary) 19.sp else 18.sp, if (primary) FontWeight.SemiBold else FontWeight.Normal)
+        devanagariStyle(if (primary) 19.sp else 17.sp, FontWeight.Normal)
     } else {
-        latinStyle(15.sp, if (primary) FontWeight.SemiBold else FontWeight.Medium)
+        latinStyle(15.sp, if (primary) FontWeight.Medium else FontWeight.Normal)
     }
     Box(
         modifier = Modifier
             .fillMaxHeight()
-            .padding(vertical = 3.dp)
-            .widthIn(min = 44.dp)
-            .clip(RoundedCornerShape(50))
+            .padding(vertical = 5.dp)
+            .widthIn(min = 40.dp)
+            .clip(RoundedCornerShape(12.dp))
             .background(if (primary) tokens.suggestionChipSelected else androidx.compose.ui.graphics.Color.Transparent)
             .clickable(onClick = onClick)
-            .padding(horizontal = if (primary) 16.dp else 12.dp),
+            .padding(horizontal = if (primary) 12.dp else 10.dp),
         contentAlignment = Alignment.Center,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

@@ -87,7 +87,7 @@ fun LayoutPanel(
             )
             Text(
                 text = stringResource(R.string.layout_sheet_title),
-                style = latinStyle(12.sp, FontWeight.SemiBold),
+                style = latinStyle(12.sp, FontWeight.Medium),
                 color = tokens.iconTintActive,
                 maxLines = 1,
             )
@@ -200,7 +200,7 @@ fun LayoutPanel(
 private fun SectionTitle(text: String, tokens: KeyboardTokens) {
     Text(
         text = text,
-        style = latinStyle(10.sp, FontWeight.SemiBold),
+        style = latinStyle(10.sp, FontWeight.Medium),
         color = tokens.iconTint,
         maxLines = 1,
     )
@@ -298,7 +298,7 @@ private fun ToggleChip(
         )
         Text(
             text = stringResource(if (checked) R.string.common_on else R.string.common_off),
-            style = latinStyle(10.sp, FontWeight.SemiBold),
+            style = latinStyle(10.sp, FontWeight.Medium),
             color = if (checked) tokens.suggestionChipSelectedText else tokens.iconTint,
             maxLines = 1,
         )
@@ -342,7 +342,7 @@ private fun LabeledSlider(
         )
         Text(
             text = "${(current.floatValue * 100).toInt()}%",
-            style = latinStyle(10.sp, FontWeight.SemiBold),
+            style = latinStyle(10.sp, FontWeight.Medium),
             color = tokens.iconTintActive,
             maxLines = 1,
         )
@@ -366,7 +366,7 @@ private fun PanelAction(
     ) {
         Text(
             text = label,
-            style = latinStyle(11.sp, FontWeight.SemiBold),
+            style = latinStyle(11.sp, FontWeight.Medium),
             color = tokens.functionKeyLabel,
             maxLines = 1,
         )

@@ -379,66 +379,64 @@ object LayoutCatalog {
     // Symbols
     // -----------------------------------------------------------------------
 
-    private val SYMBOLS_ROW_1 = listOf("!", "@", "#", "$", "%", "^", "&", "*", "(", ")")
-    private val SYMBOLS_ROW_2 = listOf("-", "_", "=", "+", "[", "]", "{", "}", "/", "\\")
-    private val SYMBOLS_ROW_3 = listOf("\"", "'", ";", ":", "~", "`", "|")
-    private val SYMBOLS_ALT_ROW_1 = listOf("\u00B0", "\u00B1", "\u00D7", "\u00F7", "\u2260", "\u2248", "\u221E", "\u2122", "\u00A9", "\u00AE")
-    private val SYMBOLS_ALT_ROW_2 = listOf("\u20B9", "$", "\u20AC", "\u00A3", "\u00A5", "\u20A9", "\u20BD", "\u00A2", "\u00A4", "\u20BA")
-    private val SYMBOLS_ALT_ROW_3 = listOf(";", ":", "'", "\"", "\u00AB", "\u00BB", "\u2026", "\u203D", "\u00A1", "\u00BF")
-    private val SYMBOLS_ALT_ROW_4 = listOf("`", "\u00B4", "^", "\u00A8", "\u02DC", "\u00AF", "\u02DA")
+    // Gboard "?123" page 1: digits on top, everyday punctuation below.
+    private val SYMBOLS_ROW_2 = listOf("@", "#", "$", "_", "&", "-", "+", "(", ")", "/")
+    private val SYMBOLS_ROW_3 = listOf("*", "\"", "'", ":", ";", "!", "?")
+
+    // Page 2 ("=\\<"): currencies, maths and brackets.
+    private val SYMBOLS_ALT_ROW_1 = listOf("~", "`", "|", "\u2022", "\u221A", "\u03C0", "\u00F7", "\u00D7", "<", ">")
+    private val SYMBOLS_ALT_ROW_2 = listOf("\u20B9", "\u00A2", "\u20AC", "\u00A5", "^", "\u00B0", "=", "{", "}", "\\")
+    private val SYMBOLS_ALT_ROW_3 = listOf("%", "\u00A9", "\u00AE", "\u2122", "\u2713", "[", "]")
+
+    private fun symbolRow(keys: List<String>) = KeyRow(keys.map { charKey(it) })
+
+    /** Left key of the third row: flips between the two symbol pages. */
+    private fun pageKey(label: String): KeyDef =
+        functionKey(KeyKind.SYMBOLS, weight = 1.5f, label = label, output = "page")
+
+    /** Bottom-left key of the symbol pages: back to the letters. */
+    private fun lettersKey(): KeyDef = functionKey(KeyKind.SYMBOLS, weight = 1.4f, labelRes = R.string.key_letters, output = "letters")
+
+    private fun symbolsBottomRow(): KeyRow = KeyRow(
+        keys = listOf(
+            lettersKey(),
+            charKey(",", longPress = listOf(";", ":", "\u0964")),
+            emojiKey(1.1f),
+            spaceKey(4f),
+            charKey(".", longPress = listOf(".com", ".np", "\u2026", ".org")),
+            enterKey(1.6f),
+        ),
+    )
 
     private fun symbols(numberRow: Boolean): KeyboardLayout {
-        val rows = ArrayList<KeyRow>(6)
-        if (numberRow) rows += numberRowKeys(devanagariNumerals = false, nepaliFlavoured = false)
-        rows += KeyRow(SYMBOLS_ROW_1.map { charKey(it) })
-        rows += KeyRow(SYMBOLS_ROW_2.map { charKey(it) })
+        val rows = ArrayList<KeyRow>(4)
+        rows += numberRowKeys(devanagariNumerals = false, nepaliFlavoured = false)
+        rows += symbolRow(SYMBOLS_ROW_2)
         rows += KeyRow(
             keys = buildList {
-                add(functionKey(KeyKind.LAYOUT_SWITCH, weight = 1.5f, labelRes = R.string.key_letters))
+                add(pageKey("=\\<"))
                 for (symbol in SYMBOLS_ROW_3) add(charKey(symbol))
                 add(backspaceKey())
             },
         )
-        rows += KeyRow(
-            keys = listOf(
-                functionKey(KeyKind.SYMBOLS, weight = 1.5f, label = "1/2"),
-                emojiKey(),
-                spaceKey(4f),
-                charKey(".", longPress = listOf(".com", ".np", "\u2026")),
-                enterKey(2.5f),
-            ),
-        )
+        rows += symbolsBottomRow()
         return KeyboardLayout(LayoutId.SYMBOLS, rows)
     }
 
     private fun symbolsAlt(numberRow: Boolean): KeyboardLayout {
-        val rows = ArrayList<KeyRow>(6)
-        if (numberRow) rows += numberRowKeys(devanagariNumerals = false, nepaliFlavoured = false)
-        rows += KeyRow(SYMBOLS_ALT_ROW_1.map { charKey(it) })
-        rows += KeyRow(SYMBOLS_ALT_ROW_2.map { charKey(it) })
-        rows += KeyRow(SYMBOLS_ALT_ROW_3.map { charKey(it) })
+        val rows = ArrayList<KeyRow>(4)
+        rows += symbolRow(SYMBOLS_ALT_ROW_1)
+        rows += symbolRow(SYMBOLS_ALT_ROW_2)
         rows += KeyRow(
             keys = buildList {
-                add(functionKey(KeyKind.LAYOUT_SWITCH, weight = 1.5f, labelRes = R.string.key_letters))
-                for (symbol in SYMBOLS_ALT_ROW_4) add(charKey(symbol))
+                add(pageKey("?123"))
+                for (symbol in SYMBOLS_ALT_ROW_3) add(charKey(symbol))
                 add(backspaceKey())
             },
         )
-        rows += KeyRow(
-            keys = listOf(
-                functionKey(KeyKind.SYMBOLS, weight = 1.5f, label = "2/2"),
-                emojiKey(),
-                spaceKey(4f),
-                charKey(".", longPress = listOf(".com", ".np", "\u2026")),
-                enterKey(2.5f),
-            ),
-        )
+        rows += symbolsBottomRow()
         return KeyboardLayout(LayoutId.SYMBOLS_ALT, rows)
     }
-
-    // -----------------------------------------------------------------------
-    // Specialised numeric layouts (EditorInfo driven)
-    // -----------------------------------------------------------------------
 
     private fun numeric(): KeyboardLayout {
         val rows = listOf(

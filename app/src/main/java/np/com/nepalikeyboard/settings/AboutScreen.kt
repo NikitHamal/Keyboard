@@ -51,7 +51,7 @@ fun AboutScreen(modifier: Modifier = Modifier) {
         SettingsSection(stringResource(R.string.language_nepali)) {
             Text(
                 text = "\u0928\u092e\u0938\u094d\u0924\u0947",
-                style = devanagariStyle(28.sp, FontWeight.SemiBold).copy(color = tokens.iconTintActive),
+                style = devanagariStyle(28.sp, FontWeight.Medium).copy(color = tokens.iconTintActive),
             )
             Text(
                 text = stringResource(R.string.settings_subtitle),

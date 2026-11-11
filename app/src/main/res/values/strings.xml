@@ -14,8 +14,8 @@
     <string name="key_shift_locked">Caps lock</string>
     <string name="key_backspace">Delete</string>
     <string name="key_enter">Enter</string>
-    <string name="key_symbols">Symbols</string>
-    <string name="key_letters">Letters</string>
+    <string name="key_symbols">?123</string>
+    <string name="key_letters">ABC</string>
     <string name="key_emoji">Emoji</string>
     <string name="key_clipboard">Clipboard</string>
     <string name="key_settings">Keyboard settings</string>
@@ -68,7 +68,7 @@
 
     <string name="language_english">English</string>
     <string name="language_nepali">नेपाली</string>
-    <string name="language_roman">Romanized</string>
+    <string name="language_roman">Nepali (Roman)</string>
 
     <string name="layout_sheet_title">Keyboard layout &amp; script</string>
 

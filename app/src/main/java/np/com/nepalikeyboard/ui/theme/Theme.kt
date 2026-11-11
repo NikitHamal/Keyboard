@@ -76,9 +76,9 @@ data class KeyboardTokens(
     val previewLabel: Color = Color.Unspecified,
 )
 
-private val BaseKeyRadius = 10.dp
-private val BaseFunctionRadius = 14.dp
-private val BaseKeyGap = 6.dp
+private val BaseKeyRadius = 9.dp
+private val BaseFunctionRadius = 12.dp
+private val BaseKeyGap = 4.dp
 private val BaseSidePadding = 3.dp
 
 /** Fallback tokens used before the theme is applied (previews, tests). */
@@ -114,8 +114,8 @@ private fun buildTokens(scheme: ColorScheme, roundnessScale: Float): KeyboardTok
         keyGap = BaseKeyGap,
         sidePadding = BaseSidePadding,
         keyPressedScale = 0.95f,
-        keyShadowElevation = 1.dp,
-        stripHeight = 48.dp,
+        keyShadowElevation = 0.dp,
+        stripHeight = 44.dp,
         toolbarHeight = 40.dp,
         enterBackground = scheme.primary,
         enterPressed = lerp(scheme.primary, scheme.onPrimary, 0.18f),

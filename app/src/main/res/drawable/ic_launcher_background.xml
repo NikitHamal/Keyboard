@@ -1,29 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Deep Himalayan dusk: indigo -> violet wash with two soft "snow-light" discs for depth. -->
+<!-- Flat tonal teal field: three solid shapes, no gradients, no shadows. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:pathData="M0,0h108v108h-108z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:startX="0"
-                android:startY="0"
-                android:endX="108"
-                android:endY="108"
-                android:type="linear">
-                <item android:color="#FF7A5CFA" android:offset="0" />
-                <item android:color="#FF4B2FD0" android:offset="0.55" />
-                <item android:color="#FF2A1A8A" android:offset="1" />
-            </gradient>
-        </aapt:attr>
-    </path>
     <path
-        android:fillColor="#22FFFFFF"
-        android:pathData="M96,-6m-34,0a34,34 0 1,1 68,0a34,34 0 1,1 -68,0" />
+        android:fillColor="#FF0F4C45"
+        android:pathData="M0,0h108v108h-108z" />
     <path
-        android:fillColor="#18000000"
-        android:pathData="M4,114m-44,0a44,44 0 1,1 88,0a44,44 0 1,1 -88,0" />
+        android:fillColor="#FF16675B"
+        android:pathData="M18,22m-36,0a36,36 0 1,1 72,0a36,36 0 1,1 -72,0" />
+    <path
+        android:fillColor="#FF0B3B36"
+        android:pathData="M98,100m-42,0a42,42 0 1,1 84,0a42,42 0 1,1 -84,0" />
 </vector>

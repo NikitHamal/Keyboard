@@ -123,7 +123,7 @@ fun DictionaryScreen(
             } else {
                 Text(
                     text = stringResource(R.string.dictionary_learned_header),
-                    style = latinStyle(11.sp, FontWeight.SemiBold),
+                    style = latinStyle(11.sp, FontWeight.Medium),
                     color = tokens.iconTintActive,
                     modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
                 )
@@ -187,7 +187,7 @@ private fun PersonalWordRow(
         ) {
             Text(
                 text = stringResource(R.string.dictionary_remove),
-                style = latinStyle(11.sp, FontWeight.SemiBold),
+                style = latinStyle(11.sp, FontWeight.Medium),
                 color = tokens.iconTintActive,
                 maxLines = 1,
             )

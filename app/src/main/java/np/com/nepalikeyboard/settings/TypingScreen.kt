@@ -58,7 +58,7 @@ fun TypingScreen(modifier: Modifier = Modifier) {
     Column(modifier = modifier.fillMaxSize()) {
         Text(
             text = stringResource(R.string.sandbox_title),
-            style = latinStyle(16.sp, FontWeight.SemiBold),
+            style = latinStyle(16.sp, FontWeight.Medium),
             color = tokens.suggestionText,
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
         )
@@ -173,7 +173,7 @@ private fun StatChip(label: String, value: String, tokens: KeyboardTokens) {
     Column {
         Text(
             text = label,
-            style = latinStyle(9.sp, FontWeight.SemiBold),
+            style = latinStyle(9.sp, FontWeight.Medium),
             color = tokens.iconTint,
         )
         Text(

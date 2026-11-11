@@ -248,7 +248,7 @@ private fun PanelBackButton(
     ) {
         Text(
             text = label,
-            style = latinStyle(11.sp, FontWeight.SemiBold),
+            style = latinStyle(11.sp, FontWeight.Medium),
             color = tokens.functionKeyLabel,
             maxLines = 1,
         )

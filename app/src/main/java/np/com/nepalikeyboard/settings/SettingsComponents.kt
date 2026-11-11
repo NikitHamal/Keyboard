@@ -109,7 +109,7 @@ fun SettingsSection(title: String, modifier: Modifier = Modifier, content: @Comp
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
             text = title.uppercase(),
-            style = latinStyle(11.5.sp, FontWeight.Bold, letterSpacing = 1.2.sp),
+            style = latinStyle(11.5.sp, FontWeight.SemiBold, letterSpacing = 1.2.sp),
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(start = 10.dp, top = 20.dp, bottom = 8.dp),
             maxLines = 1,
@@ -129,7 +129,7 @@ fun SettingsCard(
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val scale by animateFloatAsState(if (pressed) 0.975f else 1f, ExpressiveMotion.snappy(), label = "cardScale")
-    val corner by animateDpAsState(if (pressed) 14.dp else 26.dp, ExpressiveMotion.snappy(), label = "cardCorner")
+    val corner by animateDpAsState(if (pressed) 14.dp else 22.dp, ExpressiveMotion.snappy(), label = "cardCorner")
     val shape = RoundedCornerShape(corner)
     Box(
         modifier = modifier
@@ -145,7 +145,7 @@ fun SettingsCard(
                     Modifier
                 },
             )
-            .padding(horizontal = 18.dp, vertical = 15.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         content()
     }
@@ -163,7 +163,7 @@ fun SettingSwitchRow(
     SettingsCard(modifier = modifier, onClick = { onCheckedChange(!checked) }) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, style = latinStyle(15.5.sp, FontWeight.SemiBold), color = scheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(text = title, style = latinStyle(15.5.sp, FontWeight.Medium), color = scheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (description != null) {
                     Text(
                         text = description,
@@ -200,7 +200,7 @@ fun SettingInfoRow(
     SettingsCard(modifier = modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, style = latinStyle(15.5.sp, FontWeight.SemiBold), color = scheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(text = title, style = latinStyle(15.5.sp, FontWeight.Medium), color = scheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 if (description != null) {
                     Text(
                         text = description,
@@ -219,13 +219,17 @@ fun SettingInfoRow(
                     .background(scheme.secondaryContainer)
                     .padding(horizontal = 12.dp, vertical = 6.dp),
             ) {
-                Text(text = value, style = latinStyle(12.5.sp, FontWeight.Bold), color = scheme.onSecondaryContainer, maxLines = 1)
+                Text(text = value, style = latinStyle(12.5.sp, FontWeight.SemiBold), color = scheme.onSecondaryContainer, maxLines = 1)
             }
         }
     }
 }
 
-/** Connected button group: the selected segment morphs into a full pill, the others keep a soft corner. */
+/**
+ * Adaptive choice group. Options keep their natural width and wrap onto the next line instead of being squeezed
+ * into equal slots (which truncated labels like "System default"). The selected option morphs into a full pill.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun <T> SettingChoiceRow(
     options: List<T>,
@@ -236,34 +240,34 @@ fun <T> SettingChoiceRow(
     devanagari: (T) -> Boolean = { false },
 ) {
     val scheme = MaterialTheme.colorScheme
-    Row(
+    androidx.compose.foundation.layout.FlowRow(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 3.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         for (option in options) {
             val isSelected = option == selected
             val text = labelOf(option)
-            val corner by animateDpAsState(if (isSelected) 24.dp else 12.dp, ExpressiveMotion.snappy(), label = "segCorner")
-            val bg by animateColorAsState(if (isSelected) scheme.primary else scheme.surfaceContainerHigh, ExpressiveMotion.smooth(180), label = "segBg")
-            val fg by animateColorAsState(if (isSelected) scheme.onPrimary else scheme.onSurface, ExpressiveMotion.smooth(180), label = "segFg")
+            val corner by animateDpAsState(if (isSelected) 20.dp else 12.dp, ExpressiveMotion.snappy(), label = "segCorner")
+            val bg by animateColorAsState(if (isSelected) scheme.primaryContainer else scheme.surfaceContainerHigh, ExpressiveMotion.smooth(180), label = "segBg")
+            val fg by animateColorAsState(if (isSelected) scheme.onPrimaryContainer else scheme.onSurfaceVariant, ExpressiveMotion.smooth(180), label = "segFg")
             Box(
                 modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 48.dp)
+                    .heightIn(min = 40.dp)
                     .clip(RoundedCornerShape(corner))
                     .background(bg)
                     .clickable { onSelect(option) }
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = 16.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = text,
-                    style = if (devanagari(option)) devanagariStyle(14.sp, FontWeight.Medium) else latinStyle(13.sp, FontWeight.SemiBold),
+                    style = if (devanagari(option)) devanagariStyle(14.sp, FontWeight.Normal) else latinStyle(13.5.sp, if (isSelected) FontWeight.Medium else FontWeight.Normal),
                     color = fg,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false,
                 )
             }
         }
@@ -294,7 +298,7 @@ fun SettingActionRow(
     ) {
         Text(
             text = label,
-            style = latinStyle(15.sp, FontWeight.Bold),
+            style = latinStyle(15.sp, FontWeight.SemiBold),
             color = if (emphasised) scheme.onPrimary else scheme.onSecondaryContainer,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,

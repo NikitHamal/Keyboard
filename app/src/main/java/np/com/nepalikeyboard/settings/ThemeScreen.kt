@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -31,6 +33,7 @@ import np.com.nepalikeyboard.data.PaletteId
 import np.com.nepalikeyboard.data.SettingsSnapshot
 import np.com.nepalikeyboard.data.ThemeMode
 import np.com.nepalikeyboard.ui.theme.LocalKeyboardTokens
+import np.com.nepalikeyboard.ui.theme.devanagariStyle
 import np.com.nepalikeyboard.ui.theme.latinStyle
 import np.com.nepalikeyboard.ui.theme.paletteAnchors
 import np.com.nepalikeyboard.ui.theme.schemeFrom
@@ -89,20 +92,22 @@ fun ThemeScreen(
                 value = "",
                 description = stringResource(R.string.setting_palette_desc),
             )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                for (palette in PaletteId.entries) {
-                    PaletteSwatch(
-                        palette = palette,
-                        selected = !snapshot.dynamicColor && snapshot.palette == palette,
-                        dark = snapshot.isDark,
-                        onClick = { writer.write { it.setPalette(palette) } },
-                        modifier = Modifier.weight(1f),
-                    )
+            for (pair in PaletteId.entries.chunked(2)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    for (palette in pair) {
+                        PaletteSwatch(
+                            palette = palette,
+                            selected = !snapshot.dynamicColor && snapshot.palette == palette,
+                            dark = snapshot.isDark,
+                            onClick = { writer.write { it.setPalette(palette) } },
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
         }
@@ -126,7 +131,7 @@ fun ThemeScreen(
                 Column {
                     Text(
                         text = SAMPLE_LABEL,
-                        style = latinStyle(14.sp, FontWeight.Medium),
+                        style = devanagariStyle(16.sp, FontWeight.Normal),
                         color = tokens.keyLabel,
                     )
                     Spacer(Modifier.height(4.dp))
@@ -172,32 +177,37 @@ private fun PaletteSwatch(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val tokens = LocalKeyboardTokens.current
     val scheme = remember(palette, dark) { schemeFrom(paletteAnchors(palette), dark) }
-    Column(
-        modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
+    val shape = RoundedCornerShape(18.dp)
+    Row(
+        modifier = modifier
+            .clip(shape)
+            .background(scheme.surfaceContainerHigh)
+            .border(if (selected) 2.dp else 0.dp, if (selected) scheme.primary else Color.Transparent, shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-                .clip(RoundedCornerShape(tokens.functionCornerRadius))
-                .background(scheme.primaryContainer)
-                .border(
-                    width = if (selected) 2.dp else 0.dp,
-                    color = if (selected) scheme.primary else Color.Transparent,
-                    shape = RoundedCornerShape(tokens.functionCornerRadius),
-                )
-                .clickable(onClick = onClick),
-            contentAlignment = Alignment.Center,
-        ) {
-            Text(
-                text = paletteLabel(palette),
-                style = latinStyle(10.sp, FontWeight.SemiBold),
-                color = scheme.onPrimaryContainer,
-            )
-        }
+                .size(30.dp)
+                .clip(CircleShape)
+                .background(scheme.primary),
+        )
+        Box(
+            modifier = Modifier
+                .padding(start = 4.dp)
+                .size(22.dp)
+                .clip(CircleShape)
+                .background(scheme.tertiaryContainer),
+        )
+        Text(
+            text = paletteLabel(palette),
+            style = latinStyle(12.5.sp, FontWeight.Medium),
+            color = scheme.onSurface,
+            modifier = Modifier.padding(start = 10.dp),
+            maxLines = 2,
+        )
     }
 }
 

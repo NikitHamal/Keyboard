@@ -239,9 +239,9 @@ private fun TopBar(
         if (canToggle) {
             Box(
                 modifier = Modifier
-                    .size(tokens.stripHeight - 8.dp)
+                    .size(32.dp)
                     .clip(CircleShape)
-                    .background(tokens.functionKeyBackground)
+                    .background(tokens.functionKeyBackground.copy(alpha = 0.7f))
                     .clickable { expanded = !expanded }
                     .semantics { contentDescription = "Tools" },
                 contentAlignment = Alignment.Center,
@@ -251,7 +251,7 @@ private fun TopBar(
                     contentDescription = null,
                     tint = tokens.iconTint,
                     modifier = Modifier
-                        .size(22.dp)
+                        .size(20.dp)
                         .rotate(rotation),
                 )
             }
@@ -361,17 +361,17 @@ private fun ToolbarTextButton(
 ) {
     Box(
         modifier = Modifier
-            .height(34.dp)
-            .clip(CircleShape)
+            .height(30.dp)
+            .clip(RoundedCornerShape(10.dp))
             .background(tokens.suggestionChipSelected)
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp)
+            .padding(horizontal = 12.dp)
             .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
-            style = latinStyle(12.sp, FontWeight.SemiBold),
+            style = latinStyle(12.sp, FontWeight.Medium),
             color = tokens.suggestionChipSelectedText,
             maxLines = 1,
         )

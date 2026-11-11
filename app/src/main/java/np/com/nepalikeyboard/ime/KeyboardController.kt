@@ -330,7 +330,7 @@ internal class KeyboardController(
             KeyKind.SPACE -> handleSpace()
             KeyKind.ENTER -> handleEnter()
             KeyKind.SHIFT -> handleShiftTap()
-            KeyKind.SYMBOLS -> toggleSymbols()
+            KeyKind.SYMBOLS -> if (key.output == "page") toggleSymbolsPage() else toggleSymbols()
             KeyKind.LAYOUT_SWITCH -> cycleMode()
             KeyKind.EMOJI -> togglePanel(ImePanel.EMOJI)
             KeyKind.CLIPBOARD -> togglePanel(ImePanel.CLIPBOARD)
@@ -466,7 +466,6 @@ internal class KeyboardController(
             return
         }
 
-        composer.latinInField = runtime.tlm != null && !editor.sensitive
         val preview = composer.typeRoman(ic, text, snapshot.devanagariNumerals)
         composingPreview = preview ?: composer.previewTransliteration(snapshot.devanagariNumerals)
         if (shift == ShiftState.AUTO || shift == ShiftState.ON) shift = ShiftState.OFF
@@ -542,7 +541,6 @@ internal class KeyboardController(
         //    the whole word. The editor only ever sees a complete replacement, so
         //    a word can never end up half-deleted or half-transliterated.
         if (composer.hasRomanInput) {
-            composer.latinInField = runtime.tlm != null && !host.editorDescriptor.sensitive
         val preview = composer.backspaceRoman(ic, snapshot.devanagariNumerals)
             composingPreview = preview.orEmpty()
             publish()
@@ -746,6 +744,11 @@ internal class KeyboardController(
         refreshCandidates()
     }
 
+    private fun toggleSymbolsPage() {
+        symbolsAlt = !symbolsAlt
+        publish(layout = layoutForCurrentState())
+    }
+
     private fun toggleSymbols() {
         showingSymbols = !showingSymbols
         symbolsAlt = false
@@ -887,6 +890,13 @@ internal class KeyboardController(
         if (generation != this.generation) return
         this.candidates = candidates
         this.candidatesLoading = false
+        if (!predictionOnly && composer.hasRomanInput) {
+            val top = candidates.firstOrNull()
+            val ic = host.inputConnection
+            if (top != null && ic != null && top.kind != CandidateKind.PREDICTION) {
+                if (composer.applyBest(ic, composer.romanText(), top.text)) composingPreview = top.text
+            }
+        }
         publish()
     }
 

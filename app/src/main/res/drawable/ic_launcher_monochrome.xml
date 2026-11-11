@@ -1,31 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Themed-icon silhouette: keycap outline, the letter na, and the spark. -->
+<!-- Themed-icon layer: the same keycap, glyph and badge as single-colour shapes (system tints them). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:pathData="M43,29h22a13,13 0 0 1 13,13v24a13,13 0 0 1 -13,13h-22a13,13 0 0 1 -13,-13v-24a13,13 0 0 1 13,-13z"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="4.4" />
+        android:pathData="M42,30h24a13,13 0 0 1 13,13v18a13,13 0 0 1 -13,13h-24a13,13 0 0 1 -13,-13v-18a13,13 0 0 1 13,-13z"
+        android:strokeColor="#FF000000"
+        android:strokeWidth="3.4" />
     <path
-        android:pathData="M39,45H69"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeLineCap="round"
-        android:strokeWidth="4.4" />
-    <path
-        android:pathData="M64,45V68"
-        android:strokeColor="#FFFFFFFF"
-        android:strokeLineCap="round"
-        android:strokeWidth="4.4" />
-    <path
-        android:pathData="M45,45V58C45,66 50.5,69.5 56.5,67.5C60,66.3 62.2,63.6 64,60"
-        android:strokeColor="#FFFFFFFF"
+        android:pathData="M37,44H65M59,44V65M59,52C49,47 42,53 45,60C48,66 55,65 59,59"
+        android:strokeColor="#FF000000"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:strokeWidth="4.4" />
+        android:strokeWidth="3.4" />
     <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M76,22c0.9,4.6 2.4,6.1 7,7c-4.6,0.9 -6.1,2.4 -7,7c-0.9,-4.6 -2.4,-6.1 -7,-7C73.6,28.1 75.1,26.6 76,22z" />
+        android:fillColor="#FF000000"
+        android:pathData="M74,28m-8,0a8,8 0 1,1 16,0a8,8 0 1,1 -16,0" />
 </vector>

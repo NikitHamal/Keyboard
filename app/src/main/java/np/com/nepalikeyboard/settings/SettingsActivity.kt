@@ -141,7 +141,7 @@ private fun SettingsShell(snapshot: SettingsSnapshot) {
                         selected = index == selected,
                         onClick = { selected = index },
                         icon = { Icon(tab.icon, contentDescription = tab.label) },
-                        label = { Text(tab.label, style = latinStyle(12.sp, FontWeight.SemiBold)) },
+                        label = { Text(tab.label, style = latinStyle(12.sp, FontWeight.Medium)) },
                     )
                 }
             }
@@ -185,7 +185,7 @@ private fun Page(title: String, subtitle: String, content: @Composable () -> Uni
 private fun ScreenHeader(title: String, subtitle: String) {
     val scheme = MaterialTheme.colorScheme
     Column(modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, top = 22.dp, bottom = 10.dp)) {
-        Text(text = title, style = displayStyle(36.sp, FontWeight.SemiBold), color = scheme.onSurface)
+        Text(text = title, style = displayStyle(36.sp, FontWeight.Medium), color = scheme.onSurface)
         Text(text = subtitle, style = latinStyle(14.sp), color = scheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
     }
 }
@@ -211,7 +211,7 @@ private fun PillTabs(labels: List<String>, selected: Int, onSelect: (Int) -> Uni
                     .clickable { onSelect(index) }
                     .padding(horizontal = 18.dp, vertical = 10.dp),
             ) {
-                Text(text = label, style = latinStyle(13.5.sp, FontWeight.Bold), color = fg, maxLines = 1)
+                Text(text = label, style = latinStyle(13.5.sp, FontWeight.SemiBold), color = fg, maxLines = 1)
             }
         }
     }
@@ -354,7 +354,7 @@ private fun HomeScreen(writer: SettingsWriter) {
             }
             SettingsCard {
                 Column {
-                    Text("On-device, offline, private", style = latinStyle(15.5.sp, FontWeight.SemiBold), color = scheme.onSurface)
+                    Text("On-device, offline, private", style = latinStyle(15.5.sp, FontWeight.Medium), color = scheme.onSurface)
                     Text(
                         "A two-stage tiny language model (character transducer + sentence-context scorer) runs on your phone - 2.5 M parameters, no network permission, nothing leaves the keyboard.",
                         style = latinStyle(12.5.sp),
@@ -408,9 +408,9 @@ private fun Hero(ready: Boolean, enabled: Boolean, onEnable: () -> Unit, onSelec
                 .background(scheme.secondaryContainer.copy(alpha = 0.6f)),
         )
         Column(modifier = Modifier.padding(26.dp)) {
-            Text(text = "नमस्ते", style = devanagariStyle(46.sp, FontWeight.Bold), color = scheme.onPrimaryContainer)
+            Text(text = "नमस्ते", style = devanagariStyle(46.sp, FontWeight.SemiBold), color = scheme.onPrimaryContainer)
             Spacer(Modifier.height(6.dp))
-            Text(text = headline, style = displayStyle(26.sp, FontWeight.SemiBold), color = scheme.onPrimaryContainer)
+            Text(text = headline, style = displayStyle(26.sp, FontWeight.Medium), color = scheme.onPrimaryContainer)
             Text(text = body, style = latinStyle(14.5.sp), color = scheme.onPrimaryContainer.copy(alpha = 0.85f), modifier = Modifier.padding(top = 4.dp, end = 32.dp))
             Spacer(Modifier.height(18.dp))
             if (!ready) {
@@ -423,7 +423,7 @@ private fun Hero(ready: Boolean, enabled: Boolean, onEnable: () -> Unit, onSelec
                 ) {
                     Text(
                         text = if (enabled) "Choose keyboard" else "Enable keyboard",
-                        style = latinStyle(15.sp, FontWeight.Bold),
+                        style = latinStyle(15.sp, FontWeight.SemiBold),
                         color = scheme.onPrimary,
                     )
                 }
@@ -431,7 +431,7 @@ private fun Hero(ready: Boolean, enabled: Boolean, onEnable: () -> Unit, onSelec
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = scheme.onPrimaryContainer, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Try it below ↓", style = latinStyle(14.5.sp, FontWeight.Bold), color = scheme.onPrimaryContainer)
+                    Text("Try it below ↓", style = latinStyle(14.5.sp, FontWeight.SemiBold), color = scheme.onPrimaryContainer)
                 }
             }
         }
@@ -466,19 +466,19 @@ private fun StepCard(number: Int, title: String, body: String, state: StepState,
                 if (state == StepState.DONE) {
                     Icon(Icons.Rounded.Check, contentDescription = "Done", tint = badgeFg, modifier = Modifier.size(22.dp))
                 } else {
-                    Text("$number", style = displayStyle(20.sp, FontWeight.Bold), color = badgeFg)
+                    Text("$number", style = displayStyle(20.sp, FontWeight.SemiBold), color = badgeFg)
                 }
             }
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     title,
-                    style = latinStyle(16.sp, FontWeight.Bold),
+                    style = latinStyle(16.sp, FontWeight.SemiBold),
                     color = if (state == StepState.LOCKED) scheme.onSurfaceVariant else scheme.onSurface,
                 )
                 Text(body, style = latinStyle(12.5.sp), color = scheme.onSurfaceVariant, modifier = Modifier.padding(top = 2.dp))
                 if (action != null && state == StepState.CURRENT) {
-                    Text(action + "  →", style = latinStyle(13.5.sp, FontWeight.Bold), color = scheme.primary, modifier = Modifier.padding(top = 8.dp))
+                    Text(action + "  →", style = latinStyle(13.5.sp, FontWeight.SemiBold), color = scheme.primary, modifier = Modifier.padding(top = 8.dp))
                 }
             }
         }
@@ -496,8 +496,8 @@ private fun StatTile(label: String, value: String, good: Boolean, modifier: Modi
             .background(bg)
             .padding(horizontal = 14.dp, vertical = 14.dp),
     ) {
-        Text(value, style = displayStyle(22.sp, FontWeight.Bold), color = if (good) scheme.onSecondaryContainer else scheme.onSurfaceVariant, maxLines = 1)
-        Text(label, style = latinStyle(12.sp, FontWeight.SemiBold), color = if (good) scheme.onSecondaryContainer.copy(alpha = 0.8f) else scheme.onSurfaceVariant, maxLines = 1)
+        Text(value, style = displayStyle(22.sp, FontWeight.SemiBold), color = if (good) scheme.onSecondaryContainer else scheme.onSurfaceVariant, maxLines = 1)
+        Text(label, style = latinStyle(12.sp, FontWeight.Medium), color = if (good) scheme.onSecondaryContainer.copy(alpha = 0.8f) else scheme.onSurfaceVariant, maxLines = 1)
     }
 }
 

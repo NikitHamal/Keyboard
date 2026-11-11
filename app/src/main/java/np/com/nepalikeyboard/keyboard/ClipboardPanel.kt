@@ -78,7 +78,7 @@ fun ClipboardPanel(
             )
             Text(
                 text = stringResource(R.string.clipboard_header),
-                style = latinStyle(12.sp, FontWeight.SemiBold),
+                style = latinStyle(12.sp, FontWeight.Medium),
                 color = tokens.iconTintActive,
                 maxLines = 1,
             )
@@ -213,7 +213,7 @@ private fun PanelChip(
     ) {
         Text(
             text = label,
-            style = latinStyle(11.sp, FontWeight.SemiBold),
+            style = latinStyle(11.sp, FontWeight.Medium),
             color = tokens.functionKeyLabel,
             maxLines = 1,
         )

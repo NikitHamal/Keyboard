@@ -90,9 +90,9 @@ a word is being typed. Break any rule below and words get corrupted.
 2. **The editor never sees a half-word.** Inserting or deleting a keystroke
    re-renders the *whole* composed word with `setComposingText(wholeWord, 1)`.
    Editing two characters is never two commits.
-3. **Commit geometry is fixed.** `commitComposition()` reads the word that is
-   currently on screen (`previewTransliteration`), finishes the composition and
-   commits exactly that string. What the user sees is what lands in the document.
+3. **Commit geometry is fixed.** `commitComposition()` replaces the composing region in place with one
+   `commitText` (NEVER `finishComposingText()` first: that leaves the old composing text in the field and the
+   committed word lands after it, producing `Helloहेल्लो`). What the user sees is what lands in the document.
 4. **Switching scripts, panels, editors or input views commits or drops first.**
    `setMode`, `onInputViewHidden`, `editorChanged` and `editorFinished` all funnel
    through `composer.reset()` / `committing` helpers. A composition is never

@@ -92,6 +92,13 @@ internal class CompositionController(private val host: ImeHost) {
         }
         composingActive = false
         buffer.setLength(0)
+        resetField()
+    }
+
+    private fun resetField() {
+        fieldText = ""
+        bestRoman = ""
+        bestText = ""
     }
 
     /**
@@ -107,6 +114,7 @@ internal class CompositionController(private val host: ImeHost) {
         if (compositionGone) {
             composingActive = false
             buffer.setLength(0)
+            resetField()
             return true
         }
         // Any selection outside the composing region means the caret was moved
@@ -115,6 +123,7 @@ internal class CompositionController(private val host: ImeHost) {
         if (outside) {
             composingActive = false
             buffer.setLength(0)
+            resetField()
             return true
         }
         return false
@@ -148,7 +157,13 @@ internal class CompositionController(private val host: ImeHost) {
         }
         buffer.setLength(buffer.length - deleteCount)
         if (buffer.isEmpty()) {
-            reset(ic)
+            try {
+                ic.setComposingText("", 1)
+                ic.finishComposingText()
+            } catch (_: RuntimeException) {
+            }
+            composingActive = false
+            resetField()
             return ""
         }
         return render(ic, devanagariDigits)
@@ -163,22 +178,45 @@ internal class CompositionController(private val host: ImeHost) {
     }
 
     /**
-     * When true (TinyLM active) the typed Latin letters stay in the editor's composing region, like
-     * Gboard's transliteration, and the Devanagari word lives in the suggestion strip until commit.
-     * That keeps the field stable while the model refines its pick on every keystroke.
+     * What the composing region currently shows. Devanagari at all times (like Gboard's Hindi transliteration):
+     * the rule-based preview appears instantly on each keystroke and is upgraded in place to the TinyLM pick the
+     * moment the model answers ([applyBest]). Nothing but this string is ever committed on Space.
      */
-    var latinInField: Boolean = false
+    private var fieldText: String = ""
+    private var bestRoman: String = ""
+    private var bestText: String = ""
 
     /** Exactly what the composing region currently shows. */
     fun composingFieldText(fallbackPreview: String): String =
-        if (latinInField) buffer.toString() else fallbackPreview
+        if (composingActive && fieldText.isNotEmpty()) fieldText else fallbackPreview
+
+    /**
+     * Upgrades the composing region to the model's pick for [roman]. No-op when the buffer has moved on, when the
+     * text is already on screen, or when the composition is gone. Returns true when the editor was touched.
+     */
+    fun applyBest(ic: InputConnection, roman: String, text: String): Boolean {
+        if (!composingActive || text.isEmpty() || buffer.length != roman.length) return false
+        if (buffer.toString() != roman) return false
+        bestRoman = roman
+        bestText = text
+        if (text == fieldText) return false
+        return try {
+            ic.setComposingText(text, 1)
+            fieldText = text
+            true
+        } catch (_: RuntimeException) {
+            false
+        }
+    }
 
     private fun render(ic: InputConnection, devanagariDigits: Boolean): String {
         previewBuilder.setLength(0)
         PhoneticEngine.transliterateInto(buffer, previewBuilder, devanagariDigits)
         val preview = previewBuilder.toString()
+        val shown = if (bestText.isNotEmpty() && bestRoman.length == buffer.length && bestRoman.contentEquals(buffer)) bestText else preview
         try {
-            ic.setComposingText(if (latinInField) buffer.toString() else preview, 1)
+            if (shown != fieldText || !composingActive) ic.setComposingText(shown, 1)
+            fieldText = shown
             composingActive = true
         } catch (_: RuntimeException) {
             composingActive = false
@@ -191,12 +229,14 @@ internal class CompositionController(private val host: ImeHost) {
      * Returns the text that was actually committed (may be empty).
      */
     fun commitComposition(ic: InputConnection, text: String?): String {
-        val payload = text ?: buffer.toString()
+        val payload = text ?: fieldText.ifEmpty { buffer.toString() }
         buffer.setLength(0)
         composingActive = false
+        resetField()
         if (payload.isNotEmpty()) {
             try {
-                ic.finishComposingText()
+                // commitText replaces the composing region in place; finishComposingText first would leave the
+                // old composing text behind and the payload would be appended after it (duplicated words).
                 ic.commitText(payload, 1)
             } catch (_: RuntimeException) {
                 return payload
@@ -213,6 +253,7 @@ internal class CompositionController(private val host: ImeHost) {
         if (text.isEmpty()) return
         buffer.setLength(0)
         composingActive = false
+        resetField()
         val payload = when {
             devanagariDigits && text.any { it in '0'..'9' } -> Devanagari.digitsToDevanagari(text)
             else -> text
@@ -376,6 +417,7 @@ internal class CompositionController(private val host: ImeHost) {
     fun commitJoined(ic: InputConnection, text: String): String {
         buffer.setLength(0)
         composingActive = false
+        resetField()
         try {
             ic.beginBatchEdit()
             ic.setComposingText("", 1)
@@ -477,6 +519,7 @@ internal class CompositionController(private val host: ImeHost) {
     fun clearBuffer() {
         buffer.setLength(0)
         composingActive = false
+        resetField()
     }
 
     private companion object {

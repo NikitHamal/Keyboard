@@ -75,7 +75,7 @@ fun PrivacyScreen(
             if (erased) {
                 Text(
                     text = stringResource(R.string.privacy_reset_done),
-                    style = latinStyle(12.sp, FontWeight.SemiBold),
+                    style = latinStyle(12.sp, FontWeight.Medium),
                     color = tokens.iconTintActive,
                     modifier = Modifier.padding(top = 6.dp),
                 )

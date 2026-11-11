@@ -72,7 +72,7 @@ fun SettingSliderRow(
             )
             Text(
                 text = valueLabel(local),
-                style = latinStyle(12.sp, FontWeight.SemiBold),
+                style = latinStyle(12.sp, FontWeight.Medium),
                 color = tokens.iconTintActive,
                 modifier = Modifier.padding(top = 2.dp),
                 maxLines = 1,
