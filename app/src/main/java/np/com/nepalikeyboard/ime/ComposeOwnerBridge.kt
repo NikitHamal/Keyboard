@@ -39,9 +39,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
  * saved instance state of its own, and nothing in this app relies on
  * `rememberSaveable` surviving a keyboard hide.
  */
-internal class ComposeOwnerBridge(
-    private val hostView: View,
-) : LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner, OnBackPressedDispatcherOwner {
+internal class ComposeOwnerBridge : LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner, OnBackPressedDispatcherOwner {
 
     private val lifecycleRegistry = LifecycleRegistry(this)
     private val savedStateController = SavedStateRegistryController.create(this)
@@ -61,17 +59,23 @@ internal class ComposeOwnerBridge(
     override val savedStateRegistry: SavedStateRegistry
         get() = savedStateController.savedStateRegistry
 
-    /** Installs the owners on [hostView] and attaches the saved state registry. */
-    fun attachToViewTree() {
+    /**
+     * Installs the owners on every view Compose may search from: the container, and the window's DecorView
+     * (Compose's window recomposer looks at the root of the tree, not at the ComposeView's parent).
+     */
+    fun attach(vararg hosts: View?) {
         savedStateController.performAttach()
         // Without performRestore the registry stays "not restored" and any rememberSaveable / SavedStateHandle
         // inside the composition throws IllegalStateException the first time it is read.
         savedStateController.performRestore(null)
         if (lifecycleRegistry.currentState == Lifecycle.State.INITIALIZED) lifecycleRegistry.currentState = Lifecycle.State.CREATED
-        hostView.setViewTreeLifecycleOwner(this)
-        hostView.setViewTreeViewModelStoreOwner(this)
-        hostView.setViewTreeSavedStateRegistryOwner(this)
-        hostView.setViewTreeOnBackPressedDispatcherOwner(this)
+        for (host in hosts) {
+            if (host == null) continue
+            host.setViewTreeLifecycleOwner(this)
+            host.setViewTreeViewModelStoreOwner(this)
+            host.setViewTreeSavedStateRegistryOwner(this)
+            host.setViewTreeOnBackPressedDispatcherOwner(this)
+        }
     }
 
     /** Called from `onStartInputView`: the keyboard is on screen and interactive. */

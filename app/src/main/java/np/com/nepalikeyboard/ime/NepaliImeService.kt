@@ -23,6 +23,7 @@ import kotlinx.coroutines.cancel
 import np.com.nepalikeyboard.keyboard.KeyboardHost
 import np.com.nepalikeyboard.settings.SettingsActivity
 import np.com.nepalikeyboard.ui.theme.NepaliKeyboardTheme
+import np.com.nepalikeyboard.util.CrashLog
 import np.com.nepalikeyboard.util.KeyboardLog
 
 /**
@@ -51,13 +52,21 @@ import np.com.nepalikeyboard.util.KeyboardLog
 class NepaliImeService : InputMethodService(), ImeHost {
 
     private val serviceScope: CoroutineScope =
-        CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate + CoroutineName("NepaliIme"))
+        CoroutineScope(
+            SupervisorJob() + Dispatchers.Main.immediate + CoroutineName("NepaliIme") +
+                kotlinx.coroutines.CoroutineExceptionHandler { _, error ->
+                    // A failed collector must degrade a feature, never kill the keyboard process.
+                    KeyboardLog.e("IME coroutine failed", error)
+                    CrashLog.note(applicationContext, "IME coroutine failed", error)
+                },
+        )
 
     private lateinit var runtime: ImeRuntime
     private lateinit var keyboardController: KeyboardController
 
     private var bridge: ComposeOwnerBridge? = null
     private var inputRoot: FrameLayout? = null
+    private val navInsetPx = androidx.compose.runtime.mutableIntStateOf(0)
     private var currentDescriptor: EditorDescriptor = EditorDescriptor.Text
 
     // -----------------------------------------------------------------------
@@ -66,6 +75,7 @@ class NepaliImeService : InputMethodService(), ImeHost {
 
     override fun onCreate() {
         super.onCreate()
+        CrashLog.install(this)
         runtime = ImeRuntime.get(this)
         keyboardController = KeyboardController(host = this, runtime = runtime, scope = serviceScope)
         KeyboardLog.d("ImeService created")
@@ -73,15 +83,39 @@ class NepaliImeService : InputMethodService(), ImeHost {
 
     override fun onCreateInputView(): View {
         inputRoot?.let { return it }
-        val root = FrameLayout(this).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                currentKeyboardHeightPx(),
-            )
-            setBackgroundColor(Color.TRANSPARENT)
+        return try {
+            buildInputView().also { inputRoot = it }
+        } catch (error: Throwable) {
+            // Never let a view-construction failure kill the process: record it and show a readable fallback.
+            KeyboardLog.e("onCreateInputView failed", error)
+            CrashLog.note(this, "onCreateInputView failed", error)
+            fallbackView(error)
         }
-        val owner = ComposeOwnerBridge(root).also {
-            it.attachToViewTree()
+    }
+
+    private fun buildInputView(): FrameLayout {
+        // InputMethodService re-wraps the input view in WRAP_CONTENT layout params, so the height is enforced in
+        // onMeasure rather than through LayoutParams (otherwise Compose could be offered the whole screen).
+        val root = FixedHeightFrame(this, currentKeyboardHeightPx()).apply {
+            setBackgroundColor(Color.TRANSPARENT)
+            // Android 15 (targetSdk 35) lays the IME window out edge-to-edge, i.e. under the navigation bar. If the
+            // framework did not already inset us, extend the keyboard by the bar height and let Compose pad for it
+            // (the keyboard background keeps painting underneath, exactly like Gboard).
+            androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
+                val bottom = insets.getInsets(androidx.core.view.WindowInsetsCompat.Type.navigationBars()).bottom
+                if (bottom != navInsetPx.intValue) {
+                    navInsetPx.intValue = bottom
+                    extraBottom = bottom
+                }
+                insets
+            }
+        }
+        // Compose resolves its window Recomposer from the TOP of the view tree (the IME window's DecorView, which is
+        // an ancestor of this root). Owners installed only on `root` are invisible from there and the first
+        // composition crashes with "ViewTreeLifecycleOwner not found from DecorView". Install on both.
+        val decor: View? = window?.window?.decorView
+        val owner = ComposeOwnerBridge().also {
+            it.attach(root, decor)
             bridge = it
         }
         val composeView = ComposeView(this).apply {
@@ -94,17 +128,26 @@ class NepaliImeService : InputMethodService(), ImeHost {
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnLifecycleDestroyed(owner))
             setContent {
                 val uiState by keyboardController.state.collectAsStateWithLifecycle()
+                val navInset = navInsetPx.intValue
                 NepaliKeyboardTheme(snapshot = uiState.theme) {
                     KeyboardHost(
                         state = uiState,
                         sink = keyboardController,
+                        bottomInsetPx = navInset,
                     )
                 }
             }
         }
         root.addView(composeView)
-        inputRoot = root
         return root
+    }
+
+    private fun fallbackView(error: Throwable): View = android.widget.TextView(this).apply {
+        text = "Keyboard failed to start:\n${error::class.java.simpleName}: ${error.message}\n(see Settings > More > Crash log)"
+        setPadding(32, 32, 32, 32)
+        setTextColor(Color.WHITE)
+        setBackgroundColor(Color.DKGRAY)
+        textSize = 13f
     }
 
     override fun onStartInput(info: EditorInfo?, restarting: Boolean) {
@@ -259,11 +302,8 @@ class NepaliImeService : InputMethodService(), ImeHost {
     }
 
     override fun applyKeyboardHeightScale(scale: Float) {
-        val root = inputRoot ?: return
-        val params = root.layoutParams
-        params?.height = (baseKeyboardHeightPx() * scale).toInt()
-        root.layoutParams = params
-        root.requestLayout()
+        val root = inputRoot as? FixedHeightFrame ?: return
+        root.fixedHeight = (baseKeyboardHeightPx() * scale).toInt()
     }
 
     override fun switchToNextInputMethod() {
@@ -304,6 +344,33 @@ class NepaliImeService : InputMethodService(), ImeHost {
         val minPx = with(resources.displayMetrics) { 232f * density }.toInt()
         val maxPx = with(resources.displayMetrics) { 340f * density }.toInt()
         return raw.coerceIn(minPx, maxPx)
+    }
+
+    /** Frame that always measures to an exact height, whatever LayoutParams the framework assigns. */
+    private class FixedHeightFrame(context: Context, initialHeight: Int) : FrameLayout(context) {
+        var fixedHeight: Int = initialHeight
+            set(value) {
+                if (field != value) {
+                    field = value
+                    requestLayout()
+                }
+            }
+
+        /** Navigation-bar height this frame must additionally cover (0 when the framework already insets us). */
+        var extraBottom: Int = 0
+            set(value) {
+                if (field != value) {
+                    field = value
+                    requestLayout()
+                }
+            }
+
+        override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+            super.onMeasure(
+                widthMeasureSpec,
+                View.MeasureSpec.makeMeasureSpec(fixedHeight + extraBottom, View.MeasureSpec.EXACTLY),
+            )
+        }
     }
 
     private companion object {

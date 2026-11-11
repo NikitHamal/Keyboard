@@ -1,13 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
-<vector xmlns:android="http://schemas.android.com/apk/res/android" xmlns:aapt="http://schemas.android.com/aapt"
-    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+<!-- Deep Himalayan dusk: indigo -> violet wash with two soft "snow-light" discs for depth. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
     <path android:pathData="M0,0h108v108h-108z">
         <aapt:attr name="android:fillColor">
-            <gradient android:startX="0" android:startY="0" android:endX="108" android:endY="108" android:type="linear">
-                <item android:color="#FF0E8F7E" android:offset="0"/>
-                <item android:color="#FF0B5C55" android:offset="0.55"/>
-                <item android:color="#FF123B5C" android:offset="1"/>
+            <gradient
+                android:startX="0"
+                android:startY="0"
+                android:endX="108"
+                android:endY="108"
+                android:type="linear">
+                <item android:color="#FF7A5CFA" android:offset="0" />
+                <item android:color="#FF4B2FD0" android:offset="0.55" />
+                <item android:color="#FF2A1A8A" android:offset="1" />
             </gradient>
         </aapt:attr>
     </path>
+    <path
+        android:fillColor="#22FFFFFF"
+        android:pathData="M96,-6m-34,0a34,34 0 1,1 68,0a34,34 0 1,1 -68,0" />
+    <path
+        android:fillColor="#18000000"
+        android:pathData="M4,114m-44,0a44,44 0 1,1 88,0a44,44 0 1,1 -88,0" />
 </vector>

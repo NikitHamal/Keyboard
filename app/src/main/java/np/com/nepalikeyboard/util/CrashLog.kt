@@ -23,7 +23,14 @@ object CrashLog {
     private const val MAX_BYTES = 48 * 1024
     private val stamp get() = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).format(Date())
 
+    @Volatile
+    private var installed = false
+
+    /** Idempotent: called from Application.onCreate and again from the IME service (separate entry points). */
+    @Synchronized
     fun install(context: Context) {
+        if (installed) return
+        installed = true
         val app = context.applicationContext
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, error ->

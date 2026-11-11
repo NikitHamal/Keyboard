@@ -90,9 +90,11 @@ fun KeyboardHost(
     state: ImeUiState,
     sink: KeyboardActionSink,
     modifier: Modifier = Modifier,
+    bottomInsetPx: Int = 0,
 ) {
     val tokens = LocalKeyboardTokens.current
     val view = LocalView.current
+    val bottomInset = with(androidx.compose.ui.platform.LocalDensity.current) { bottomInsetPx.toDp() }
     val feedback = remember(view) { KeyboardFeedback(view) }
     DisposableEffect(feedback) {
         onDispose { feedback.release() }
@@ -125,7 +127,8 @@ fun KeyboardHost(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(tokens.keyboardBackground),
+            .background(tokens.keyboardBackground)
+            .padding(bottom = bottomInset),
     ) {
         // Both rows are settings-controlled. Hiding the strip is how a user turns
         // suggestions off; hiding the toolbar hands every secondary action back to

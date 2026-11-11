@@ -119,6 +119,13 @@ internal class KeyboardController(
     private var lastPressKey: KeyDef? = null
     private var lastPressChar: String? = null
 
+    /**
+     * Text left of the caret (without our composing region); re-read only when a new word starts.
+     * Declared ABOVE `init`: collectors started there run eagerly on Dispatchers.Main.immediate and must never see
+     * a not-yet-initialised field (that was a null-deref crash on every second service start).
+     */
+    private var leftCtx: String = ""
+
     init {
         runtime.ensureLexicon()
         runtime.ensureTlm()
@@ -630,9 +637,6 @@ internal class KeyboardController(
         }
         return null
     }
-
-    /** Text left of the caret (without our composing region); re-read only when a new word starts. */
-    private var leftCtx: String = ""
 
     private fun leftContext(): String {
         if (composer.romanLength > 1) return leftCtx

@@ -64,6 +64,7 @@ class CandidateEngine(
     init {
         scope.launch(Dispatchers.Default) {
             for (request in requests) {
+                try {
                 when (request) {
                     is Request.Roman -> {
                         // Phase 1 is cheap (lexicon + rescoring, no beam search) so the strip updates within a
@@ -75,6 +76,12 @@ class CandidateEngine(
                         }
                     }
                     is Request.Prediction -> deliver(handlePrediction(request), predictionOnly = true, generation = request.generation)
+                }
+                } catch (error: kotlinx.coroutines.CancellationException) {
+                    throw error
+                } catch (error: Throwable) {
+                    // One bad request must not kill the worker for the rest of the session.
+                    np.com.nepalikeyboard.util.KeyboardLog.e("candidate worker request failed", error)
                 }
             }
         }

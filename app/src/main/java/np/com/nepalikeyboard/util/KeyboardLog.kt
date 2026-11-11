@@ -26,7 +26,7 @@ object KeyboardLog {
     }
 
     fun e(message: String, throwable: Throwable? = null) {
-        if (BuildConfig.DEBUG) Log.e(TAG, message, throwable)
+        Log.e(TAG, message, throwable)
     }
 
     /** Always logs; reserved for conditions that must be visible in the field. */
