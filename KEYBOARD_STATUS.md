@@ -67,3 +67,21 @@ Android pipeline:
 ## Next ideas
 - On-device check of p95 latency (Home -> Engine card). If still high on low-end devices lower `TlmTuning.maxHelperThreads`.
 - Baseline profile for the inference kernels.
+
+
+## Session: realtime pass 3 (upstream check, ctx cache, non-blocking exact Space, baseline profile, new icon)
+Upstream `transliterationlm` @ 794d9d1: re-packed `encoder/decoder/ctx.int8.onnx` with `tools/pack_tlm.py` and compared byte-for-byte with
+`assets/tlm/{s2s,ctx}.tlmw` (identical), text assets identical, engine rules already ported -> nothing to sync.
+
+Latency/precision changes (all behaviour-preserving):
+- `KtCtx` caches the transformer output per context window (`hCache`, 96 entries). The window only depends on the words LEFT of the caret,
+  so every extra letter of the same word skips the whole 2-layer pass and only does one dot product per candidate (identical scores).
+- Space no longer blocks the main thread for up to 45 ms and no longer commits a pre-beam answer for unseen words. `CandidateEngine` tags each
+  result `isFinal` (no beam pending). If the final result is not ready, Space is parked (`pendingSpaceGeneration`), the composing word stays on
+  screen, and the space commit happens the instant the final result arrives (or after 160 ms, or when any other input comes - `flushPendingSpace()`).
+- Warm-up thread no longer inverts priorities: it ran at BACKGROUND priority while holding the engine lock, so a keystroke could wait on a
+  throttled thread. It now runs at default priority and yields while the user is typing (`TlmTuning.userIsTyping`).
+- Hand-written baseline profile (`app/src/main/baseline-prof.txt`, wildcard rules for tlm/engine/ime/keyboard/util/data) + explicit
+  `androidx.profileinstaller` so the kernels are AOT-compiled on sideloaded installs instead of running interpreted.
+- New launcher icon: flat deep-teal field, cream squircle keycap with the Devanagari ka cut out, saffron badge with Roman A cut out
+  (real glyph outlines, boolean-difference geometry, no fill-rule dependence, inside the 66dp safe zone, themed monochrome layer).

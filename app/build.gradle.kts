@@ -122,6 +122,8 @@ dependencies {
     androidTestImplementation(platform(libs.androidx.compose.bom))
 
     implementation(libs.androidx.core.ktx)
+    // Installs the bundled baseline profile on sideloaded installs too (the keystroke hot path is AOT-compiled).
+    implementation("androidx.profileinstaller:profileinstaller:1.4.1")
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.savedstate.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)

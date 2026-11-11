@@ -82,6 +82,15 @@ object TlmLoader {
         var left = ""
         for (word in WARMUP_WORDS) {
             if (stop()) return
+            // Never hold the engine lock against a real keystroke: wait until the user pauses.
+            while (TlmTuning.userIsTyping()) {
+                if (stop()) return
+                try {
+                    Thread.sleep(150L)
+                } catch (_: InterruptedException) {
+                    return
+                }
+            }
             try {
                 engine.suggest(left, word, 6, true, false)
             } catch (_: Throwable) {

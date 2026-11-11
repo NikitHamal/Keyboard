@@ -1,0 +1,8 @@
+# Baseline profile (hand-written, rule based): AOT-compile the keystroke hot path at install time so the pure-Kotlin
+# TinyLM kernels never run in the interpreter. Wildcards are expanded by profgen against the final dex.
+HSPLnp/com/nepalikeyboard/tlm/**->**(**)**
+HSPLnp/com/nepalikeyboard/engine/**->**(**)**
+HSPLnp/com/nepalikeyboard/ime/**->**(**)**
+HSPLnp/com/nepalikeyboard/keyboard/**->**(**)**
+HSPLnp/com/nepalikeyboard/util/**->**(**)**
+HSPLnp/com/nepalikeyboard/data/**->**(**)**

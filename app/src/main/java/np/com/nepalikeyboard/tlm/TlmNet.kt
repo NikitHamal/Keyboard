@@ -196,6 +196,12 @@ object TlmTuning {
 
     /** Upper bound for extra scoring threads besides the caller. 0 disables parallel scoring. */
     @Volatile var maxHelperThreads: Int = 3
+
+    /** SystemClock-independent nanoTime of the latest keystroke request; background warm-up yields while the user types. */
+    @Volatile var lastKeystrokeNanos: Long = 0L
+
+    fun userIsTyping(withinMs: Long = 1200L): Boolean =
+        lastKeystrokeNanos != 0L && System.nanoTime() - lastKeystrokeNanos < withinMs * 1_000_000L
 }
 
 /** Thrown from inside a long computation when the request was superseded by a newer keystroke. */
@@ -561,8 +567,39 @@ class KtCtx(bytes: ByteArray, words: List<String>, private val heads: Int = 4) :
      * Padding positions (id 0) are masked as attention keys, so their rows never influence anything: they are not
      * embedded, projected or fed forward at all (the right half of the window is always padding while typing).
      */
+    /** Window ids wrapped for use as a map key. */
+    private class WinKey(val ids: IntArray) {
+        private val hash = ids.contentHashCode()
+        override fun hashCode() = hash
+        override fun equals(other: Any?) = other is WinKey && other.hash == hash && other.ids.contentEquals(ids)
+    }
+
+    /**
+     * The transformer output for a window depends only on the words LEFT of the caret (the centre is a fixed mask token and
+     * the right half is padding), so it is identical for every letter typed in the same word. Caching it turns the
+     * per-keystroke context cost from a full 2-layer pass into one dot product per candidate - same numbers, no recompute.
+     */
+    private val hCache = object : LinkedHashMap<WinKey, FloatArray>(64, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<WinKey, FloatArray>) = size > 96
+    }
+
     @Synchronized
     override fun score(win: IntArray, cand: IntArray): FloatArray {
+        val key = WinKey(win.copyOf())
+        var hv = hCache[key]
+        if (hv == null) {
+            encodeWindow(win)
+            hv = h.copyOf()
+            hCache[key] = hv
+        }
+        return FloatArray(cand.size) { ci ->
+            row(cand[ci], e, 0)
+            cbias[cand[ci]] + Nn.dot(hv, 0, e, 0, d)
+        }
+    }
+
+    /** Runs the window through the transformer; the projected centre vector is left in [h]. */
+    private fun encodeWindow(win: IntArray) {
         val n = W
         for (i in 0 until n) skip[i] = win[i] == 0
         for (i in 0 until n) {
@@ -594,9 +631,5 @@ class KtCtx(bytes: ByteArray, words: List<String>, private val heads: Int = 4) :
         }
         lnF.apply(x, centre * d, hn, 0)
         proj.mv(hn, 0, h, 0)
-        return FloatArray(cand.size) { ci ->
-            row(cand[ci], e, 0)
-            cbias[cand[ci]] + Nn.dot(h, 0, e, 0, d)
-        }
     }
 }

@@ -114,10 +114,10 @@ class ImeRuntime private constructor(
                 tlm = engine
                 _tlmReady.value = true
                 KeyboardLog.d("TinyLM ready in ${android.os.SystemClock.elapsedRealtime() - started} ms")
-                // Background-priority warm-up: JIT-compiles the kernels and seeds the cache with common words.
+                // Normal-priority warm-up that yields while the user types (a background-priority thread holding the engine lock would invert priorities): JIT-compiles the kernels and seeds the cache with common words.
                 Thread({
                     try {
-                        android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
+                        android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_DEFAULT)
                     } catch (_: Throwable) {
                     }
                     val t0 = android.os.SystemClock.elapsedRealtime()

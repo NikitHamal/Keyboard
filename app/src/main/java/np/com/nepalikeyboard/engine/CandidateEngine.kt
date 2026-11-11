@@ -42,7 +42,7 @@ class CandidateEngine(
 
     /** Implemented by the IME controller; always invoked on the main thread. */
     interface Callback {
-        fun onCandidatesReady(generation: Long, candidates: List<Candidate>, predictionOnly: Boolean)
+        fun onCandidatesReady(generation: Long, candidates: List<Candidate>, predictionOnly: Boolean, isFinal: Boolean)
     }
 
     private sealed interface Request {
@@ -70,7 +70,7 @@ class CandidateEngine(
     private val mainHandler = Handler(Looper.getMainLooper())
 
     /** The newest result the worker finished, readable from any thread (see [awaitPublished]). */
-    private class Published(val generation: Long, val candidates: List<Candidate>)
+    private class Published(val generation: Long, val candidates: List<Candidate>, val isFinal: Boolean)
 
     @Volatile
     private var published: Published? = null
@@ -84,7 +84,7 @@ class CandidateEngine(
                     when (request) {
                         is Request.Roman -> processRoman(request)
                         is Request.Prediction -> if (latestGeneration.get() == request.generation) {
-                            post(request.generation, handlePrediction(request), predictionOnly = true)
+                            post(request.generation, handlePrediction(request), predictionOnly = true, isFinal = true)
                         }
                     }
                 } catch (error: kotlinx.coroutines.CancellationException) {
@@ -106,22 +106,24 @@ class CandidateEngine(
      */
     private fun processRoman(request: Request.Roman) {
         if (latestGeneration.get() != request.generation) return
+        pendingDeep = false
         val shallow = handleRoman(request, deep = false)
         np.com.nepalikeyboard.util.TlmStats.record(System.nanoTime() - request.submittedAt)
-        publish(request.generation, shallow)
-        post(request.generation, shallow, predictionOnly = false)
-        if (pendingDeep && latestGeneration.get() == request.generation) {
+        val needsDeep = pendingDeep && latestGeneration.get() == request.generation
+        publish(request.generation, shallow, isFinal = !needsDeep)
+        post(request.generation, shallow, predictionOnly = false, isFinal = !needsDeep)
+        if (needsDeep) {
             pendingDeep = false
             val deep = handleRoman(request, deep = true)
-            publish(request.generation, deep)
-            post(request.generation, deep, predictionOnly = false)
+            publish(request.generation, deep, isFinal = true)
+            post(request.generation, deep, predictionOnly = false, isFinal = true)
         }
     }
 
-    private fun publish(generation: Long, candidates: List<Candidate>) {
+    private fun publish(generation: Long, candidates: List<Candidate>, isFinal: Boolean) {
         publishLock.lock()
         try {
-            published = Published(generation, candidates)
+            published = Published(generation, candidates, isFinal)
             publishedChanged.signalAll()
         } finally {
             publishLock.unlock()
@@ -132,8 +134,15 @@ class CandidateEngine(
      * The candidates the worker computed for [generation], waiting at most [timeoutMs]. Used by Space so it commits the
      * model's pick for the word on screen without ever running the model on the main thread. Null on timeout.
      */
+    /** True when the worker has finished EVERYTHING (including any beam search) for [generation]. */
+    fun isFinal(generation: Long): Boolean {
+        val p = published ?: return false
+        return p.generation == generation && p.isFinal
+    }
+
     fun awaitPublished(generation: Long, timeoutMs: Long): List<Candidate>? {
         published?.let { if (it.generation == generation) return it.candidates }
+        if (timeoutMs <= 0L) return null
         var nanos = TimeUnit.MILLISECONDS.toNanos(timeoutMs)
         publishLock.lock()
         try {
@@ -157,6 +166,7 @@ class CandidateEngine(
         leftContext: String = "",
     ) {
         latestGeneration.set(generation)
+        np.com.nepalikeyboard.tlm.TlmTuning.lastKeystrokeNanos = System.nanoTime()
         requests.trySend(
             Request.Roman(
                 generation = generation,
@@ -185,8 +195,8 @@ class CandidateEngine(
     // -----------------------------------------------------------------------
 
     /** Hands a result to the main thread without making the worker wait for it. */
-    private fun post(generation: Long, candidates: List<Candidate>, predictionOnly: Boolean) {
-        mainHandler.post { callback.onCandidatesReady(generation, candidates, predictionOnly) }
+    private fun post(generation: Long, candidates: List<Candidate>, predictionOnly: Boolean, isFinal: Boolean) {
+        mainHandler.post { callback.onCandidatesReady(generation, candidates, predictionOnly, isFinal) }
     }
 
     private fun handleRoman(request: Request.Roman, deep: Boolean = true): List<Candidate> {

@@ -504,7 +504,7 @@ class SandboxController(
 
     override fun onSwitchInputMethod() = Unit
 
-    override fun onCandidatesReady(generation: Long, candidates: List<Candidate>, predictionOnly: Boolean) {
+    override fun onCandidatesReady(generation: Long, candidates: List<Candidate>, predictionOnly: Boolean, isFinal: Boolean) {
         if (generation != this.generation) return
         this.candidates = candidates
         this.candidatesLoading = false

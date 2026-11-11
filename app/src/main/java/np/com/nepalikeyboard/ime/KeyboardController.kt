@@ -1,5 +1,7 @@
 package np.com.nepalikeyboard.ime
 
+import android.os.Handler
+import android.os.Looper
 import android.view.inputmethod.InputConnection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -130,6 +132,13 @@ internal class KeyboardController(
     private var submittedRoman: String = ""
     private var submittedGeneration = 0L
 
+    // Space never blocks the UI thread. When the worker is still running the beam search for an unseen word, Space is
+    // parked here (the composing word stays on screen) and completes the instant the final result arrives, or after
+    // SPACE_DEFER_MS, or when any other input comes first - so what Space commits is always the model's final pick.
+    private var pendingSpaceGeneration = -1L
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val spaceTimeout = Runnable { flushPendingSpace() }
+
     init {
         runtime.ensureLexicon()
         runtime.ensureTlm()
@@ -206,6 +215,7 @@ internal class KeyboardController(
 
     /** Input view became visible: a fresh session starts here. */
     fun onInputViewShown() {
+        cancelPendingSpace()
         defaultLayoutApplied = false
         panel = ImePanel.NONE
         showingSymbols = false
@@ -225,6 +235,7 @@ internal class KeyboardController(
 
     /** Input view hidden: nothing may keep writing into the editor. */
     fun onInputViewHidden() {
+        cancelPendingSpace()
         composer.reset(host.inputConnection)
         panel = ImePanel.NONE
         showingSymbols = false
@@ -244,6 +255,7 @@ internal class KeyboardController(
      * discarded here, never migrated, so text can never land in the wrong field.
      */
     fun editorChanged() {
+        cancelPendingSpace()
         composer.reset(host.inputConnection)
         candidates = emptyList()
         composingPreview = ""
@@ -259,6 +271,7 @@ internal class KeyboardController(
 
     /** The editor went away with no successor. */
     fun editorFinished() {
+        cancelPendingSpace()
         composer.reset(host.inputConnection)
         composer.clearBuffer()
         candidates = emptyList()
@@ -312,6 +325,7 @@ internal class KeyboardController(
     // -----------------------------------------------------------------------
 
     override fun onKeyPressed(key: KeyDef) {
+        flushPendingSpace()
         when (key.kind) {
             KeyKind.CHARACTER -> {
                 lastPressKey = key
@@ -331,6 +345,7 @@ internal class KeyboardController(
     }
 
     override fun onKeyReleased(key: KeyDef) {
+        flushPendingSpace()
         when (key.kind) {
             KeyKind.SPACE -> handleSpace()
             KeyKind.ENTER -> handleEnter()
@@ -359,6 +374,7 @@ internal class KeyboardController(
      * key flips the Devanagari extras page.
      */
     override fun onKeyLongPressed(key: KeyDef, option: String?) {
+        flushPendingSpace()
         if (option != null) {
             val ic = host.inputConnection
             if (ic != null && lastPressKey === key && lastPressChar != null) {
@@ -388,11 +404,13 @@ internal class KeyboardController(
     }
 
     override fun onCursorDrag(characters: Int) {
+        flushPendingSpace()
         if (characters == 0) return
         composer.moveCursor(host.inputConnection ?: return, characters)
     }
 
     override fun onSwipeDelete(words: Int) {
+        flushPendingSpace()
         if (words <= 0) return
         val ic = host.inputConnection ?: return
         if (composer.hasRomanInput) {
@@ -496,9 +514,12 @@ internal class KeyboardController(
     private fun handleSpace() {
         val ic = host.inputConnection ?: return
         if (composer.hasRomanInput) {
-            commitRoman(ic, correctedWord = bestCommitForm(), addSpaceAfter = true)
-            updateShiftAfterEdit()
-            refreshCandidates()
+            if (shouldDeferSpace()) {
+                pendingSpaceGeneration = generation
+                mainHandler.postDelayed(spaceTimeout, SPACE_DEFER_MS)
+                return
+            }
+            completeSpace(ic, waitMs = SPACE_WAIT_MS)
             return
         }
         // Double space after a Devanagari word turns into danda + space (Gboard's "double-space period").
@@ -653,17 +674,52 @@ internal class KeyboardController(
      * keystroke): it reads the result the worker already published for the current request, waiting at most
      * [SPACE_WAIT_MS] for it. On a timeout the caller commits the text that is on screen.
      */
+    private fun completeSpace(ic: InputConnection, waitMs: Long) {
+        spaceWaitMs = waitMs
+        commitRoman(ic, correctedWord = bestCommitForm(), addSpaceAfter = true)
+        updateShiftAfterEdit()
+        refreshCandidates()
+    }
+
+    private var spaceWaitMs = SPACE_WAIT_MS
+
+    /** True when the worker has not yet produced its final answer for the word on screen. */
+    private fun shouldDeferSpace(): Boolean {
+        if (runtime.tlm == null || host.editorDescriptor.sensitive) return false
+        val roman = composer.romanText()
+        if (submittedRoman != roman || submittedGeneration != generation) return false
+        for (c in roman) if (!(c in 'a'..'z' || c in 'A'..'Z' || c == '\'')) return false
+        if (runtime.tlm?.keepsLatin(roman) == true) return false
+        return !engine.isFinal(generation)
+    }
+
+    /** Completes a parked Space with the best result available right now (never waits). */
+    private fun flushPendingSpace() {
+        if (pendingSpaceGeneration < 0) return
+        pendingSpaceGeneration = -1L
+        mainHandler.removeCallbacks(spaceTimeout)
+        val ic = host.inputConnection ?: return
+        if (!composer.hasRomanInput) return
+        completeSpace(ic, waitMs = 0L)
+    }
+
+    private fun cancelPendingSpace() {
+        pendingSpaceGeneration = -1L
+        mainHandler.removeCallbacks(spaceTimeout)
+    }
+
     private fun tlmBest(roman: String): Candidate? {
         val tlm = runtime.tlm ?: return null
         if (host.editorDescriptor.sensitive) return null
         for (c in roman) if (!(c in 'a'..'z' || c in 'A'..'Z' || c == '\'')) return null
         if (tlm.keepsLatin(roman)) return Candidate(text = roman, kind = CandidateKind.LITERAL)
         if (submittedRoman != roman || submittedGeneration != generation) return null
-        val list = engine.awaitPublished(submittedGeneration, SPACE_WAIT_MS) ?: return null
+        val list = engine.awaitPublished(submittedGeneration, spaceWaitMs) ?: return null
         return list.firstOrNull { it.kind == CandidateKind.TRANSLITERATION }
     }
 
     override fun onCandidateSelected(candidate: Candidate) {
+        flushPendingSpace()
         val ic = host.inputConnection ?: return
         if (composer.hasRomanInput) {
             val roman = composer.romanText()
@@ -888,7 +944,7 @@ internal class KeyboardController(
         publish()
     }
 
-    override fun onCandidatesReady(generation: Long, candidates: List<Candidate>, predictionOnly: Boolean) {
+    override fun onCandidatesReady(generation: Long, candidates: List<Candidate>, predictionOnly: Boolean, isFinal: Boolean) {
         if (generation != this.generation) return
         this.candidates = candidates
         this.candidatesLoading = false
@@ -898,6 +954,11 @@ internal class KeyboardController(
             if (top != null && ic != null && top.kind != CandidateKind.PREDICTION) {
                 if (composer.applyBest(ic, composer.romanText(), top.text)) composingPreview = top.text
             }
+        }
+        if (isFinal && pendingSpaceGeneration == generation) {
+            // Space was parked waiting for exactly this answer: commit it now.
+            flushPendingSpace()
+            return
         }
         publish()
     }
@@ -932,6 +993,7 @@ internal class KeyboardController(
     // -----------------------------------------------------------------------
 
     override fun onPanelRequested(panel: ImePanel) {
+        flushPendingSpace()
         togglePanel(panel)
     }
 
@@ -953,6 +1015,7 @@ internal class KeyboardController(
     }
 
     override fun onEmojiSelected(emoji: String) {
+        flushPendingSpace()
         val ic = host.inputConnection ?: return
         if (composer.hasRomanInput) commitRoman(ic, correctedWord = null)
         composer.commitText(ic, emoji, addSpaceAfter = false, devanagariDigits = false)
@@ -965,6 +1028,7 @@ internal class KeyboardController(
     }
 
     override fun onClipboardEntrySelected(entry: ClipboardEntry) {
+        flushPendingSpace()
         val ic = host.inputConnection ?: return
         if (composer.hasRomanInput) commitRoman(ic, correctedWord = null)
         composer.commitText(ic, entry.text, addSpaceAfter = false, devanagariDigits = false)
@@ -1169,7 +1233,8 @@ internal class KeyboardController(
     private companion object {
         const val CONTEXT_LOOKBACK = 64
         const val LEFT_CONTEXT_CHARS = 120
-        const val SPACE_WAIT_MS = 45L
+        const val SPACE_WAIT_MS = 12L
+        const val SPACE_DEFER_MS = 160L
         const val PREFIX_LOOKBACK = 24
         const val PROMOTION_HITS = 2
         const val MIN_HEIGHT_SCALE = 0.7f
