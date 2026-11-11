@@ -14,7 +14,7 @@
     <string name="key_shift_locked">Caps lock</string>
     <string name="key_backspace">Delete</string>
     <string name="key_enter">Enter</string>
-    <string name="key_symbols">?123</string>
+    <string name="key_symbols">\?123</string>
     <string name="key_letters">ABC</string>
     <string name="key_emoji">Emoji</string>
     <string name="key_clipboard">Clipboard</string>
