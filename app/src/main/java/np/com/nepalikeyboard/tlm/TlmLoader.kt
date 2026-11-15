@@ -19,8 +19,13 @@ object TlmLoader {
 
     private fun JSONArray.strings(): List<String> = List(length()) { getString(it) }
 
-    /** [read] returns the bytes of a file under `assets/tlm/` (Android assets in the app, plain files in the JVM harness). */
-    fun load(read: (String) -> ByteArray): HybridEngine {
+    /**
+     * [read] returns the bytes of a file under `assets/tlm/` (Android assets in the app, plain files in the JVM harness).
+     * Phase 1 (this call) builds the engine around the main model only so typing works immediately;
+     * [attachExtras] then adds the m2 + a4kd ensemble members and the stem-bigram LM exactly like the web app.
+     * [full] = true does both in one blocking call (JVM harness).
+     */
+    fun load(read: (String) -> ByteArray, full: Boolean = true): HybridEngine {
         val cfg = JSONObject(read.text("config.json"))
         val vocab = JSONObject(read.text("vocab.json"))
         val m = cfg.getJSONObject("cfg")
@@ -28,13 +33,20 @@ object TlmLoader {
             read("s2s.tlmw"),
             vocab.getJSONArray("src").strings(), vocab.getJSONArray("tgt").strings(),
             cfg.getInt("max_src"), m.getInt("d"), m.getInt("h"), m.getInt("enc"), m.getInt("dec"),
+            lower = vocab.getJSONArray("src").length() < 50,
         )
 
         val lex = TlmLexicon(read.text("lex_ne.tsv"))
         val direct = HashMap<String, List<String>>()
+        val definitive = HashSet<String>()
         for (line in read.text("direct_ne.tsv").lineSequence()) {
             val p = line.split('\t')
-            if (p.size >= 2) direct[p[0]] = p.drop(1)
+            if (p.size >= 2) {
+                val v = p.drop(1).toMutableList()
+                // '!' = definitive entry (Stage 2 never overrides it)
+                if (v[0].startsWith("!")) { v[0] = v[0].substring(1); definitive.add(p[0]) }
+                direct[p[0]] = v
+            }
         }
 
         val sufObj = cfg.optJSONObject("suffixes")
@@ -56,10 +68,54 @@ object TlmLoader {
             ctx = KtCtx(read("ctx.tlmw"), words, cfg.optInt("ctx_heads", 4))
         }
         val engine = HybridEngine(neural, lex, direct, keep, suffixes, join, params, ctx)
+        engine.definitive = definitive
+        mainNeural = neural
+        if (full) attachExtras(engine, read)
         // Warm the JIT so the first real keystroke is fast.
-        engine.suggest("राम ", "namaste")
-        engine.suggest("", "ma")
+        engine.suggest("राम ", "namaste", deep = false)
+        engine.suggest("", "ma", deep = false)
         return engine
+    }
+
+    @Volatile private var mainNeural: KtNeural? = null
+
+    /** Load problems of the optional parts (ensemble members, stem LM); empty when everything loaded. */
+    val notes: MutableList<String> = java.util.Collections.synchronizedList(ArrayList())
+
+    /** Adds the ensemble members listed in config.json (`ensemble`) and the compact LM (`lm_file`). Every part is optional and failure-tolerant. */
+    fun attachExtras(engine: HybridEngine, read: (String) -> ByteArray) {
+        val cfg = JSONObject(read.text("config.json"))
+        val main = mainNeural
+        try {
+            val subs = cfg.optJSONArray("ensemble")?.strings().orEmpty()
+            if (main != null && subs.isNotEmpty()) {
+                val members = ArrayList<KtNeural>()
+                members.add(main)
+                for (sub in subs) {
+                    val sc = JSONObject(read.text("${sub}_config.json"))
+                    val sv = JSONObject(read.text("${sub}_vocab.json"))
+                    val c = sc.getJSONObject("cfg")
+                    members.add(
+                        KtNeural(
+                            read("$sub.tlmw"), sv.getJSONArray("src").strings(), sv.getJSONArray("tgt").strings(),
+                            sc.getInt("max_src"), c.getInt("d"), c.getInt("h"), c.getInt("enc"), c.getInt("dec"),
+                            lower = sv.getJSONArray("src").length() < 50,
+                        ),
+                    )
+                }
+                engine.ensemble = EnsembleNeural(members)
+            }
+        } catch (t: Throwable) {
+            engine.ensemble = null
+            notes.add("ensemble load failed: $t")
+        }
+        try {
+            val lmFile = cfg.optString("lm_file", "")
+            if (lmFile.isNotEmpty()) engine.lm = CompactLM(read.text(lmFile))
+        } catch (t: Throwable) {
+            engine.lm = null
+            notes.add("stem LM load failed: $t")
+        }
     }
 
     private val WARMUP_WORDS = listOf(
@@ -78,7 +134,7 @@ object TlmLoader {
      * Ranks the most common typed words once, in the background, so (a) ART's JIT has compiled the inference kernels
      * before the first real keystroke and (b) those words are already in the engine's LRU cache.
      */
-    fun warmup(engine: HybridEngine, pauseMs: Long = 6L, stop: () -> Boolean = { false }) {
+    fun warmup(engine: HybridEngine, pauseMs: Long = 6L, deepToo: Boolean = true, stop: () -> Boolean = { false }) {
         var left = ""
         for (word in WARMUP_WORDS) {
             if (stop()) return
@@ -93,6 +149,7 @@ object TlmLoader {
             }
             try {
                 engine.suggest(left, word, 6, true, false)
+                if (deepToo && engine.ensemble != null) engine.suggest(left, word, 6, true, true)
             } catch (_: Throwable) {
                 // Warm-up is best effort.
             }

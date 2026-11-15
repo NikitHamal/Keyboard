@@ -12,3 +12,4 @@ app/build/
 build/
 *.hprof
 .kotlin/
+__pycache__/

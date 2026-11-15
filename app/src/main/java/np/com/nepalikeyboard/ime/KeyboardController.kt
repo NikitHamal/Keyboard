@@ -949,7 +949,14 @@ internal class KeyboardController(
         this.candidates = candidates
         this.candidatesLoading = false
         if (!predictionOnly && composer.hasRomanInput) {
-            val top = candidates.firstOrNull()
+            val roman = composer.romanText()
+            val tlmEngine = runtime.tlm
+            // With TinyLM the strip leads with the letters as typed (Gboard order); the composing word shows the model pick right behind it.
+            val top = if (tlmEngine != null && !tlmEngine.keepsLatin(roman)) {
+                candidates.firstOrNull { it.kind != CandidateKind.LITERAL } ?: candidates.firstOrNull()
+            } else {
+                candidates.firstOrNull()
+            }
             val ic = host.inputConnection
             if (top != null && ic != null && top.kind != CandidateKind.PREDICTION) {
                 if (composer.applyBest(ic, composer.romanText(), top.text)) composingPreview = top.text

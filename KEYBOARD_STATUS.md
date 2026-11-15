@@ -85,3 +85,35 @@ Latency/precision changes (all behaviour-preserving):
   `androidx.profileinstaller` so the kernels are AOT-compiled on sideloaded installs instead of running interpreted.
 - New launcher icon: flat deep-teal field, cream squircle keycap with the Devanagari ka cut out, saffron badge with Roman A cut out
   (real glyph outlines, boolean-difference geometry, no fill-rule dependence, inside the 66dp safe zone, themed monochrome layer).
+
+
+## Session: web-engine parity (session 42 ensemble), literal chip first, realtime tiers, new icon
+Upstream `transliterationlm` @ 253a6b5 (web app = `docs/tlm.js`) had moved far past our port. Now mirrored in `tlm/TlmEngine.kt` + `tlm/TlmEnsemble.kt`:
+- **Ensemble** `main + m2 + a4kd` (`config.json` -> `ensemble`): `EnsembleNeural` = web `Transliterator._score/_beam` (Dual-Core: base = main+m2 mean,
+  specialist = a4kd (lower-case vocab), capped veto, single-word common protection, beam = union of member beams re-scored).
+  `m2.tlmw` / `a4kd.tlmw` packed with `tools/pack_tlm.py` (`tools/sync_tlm.sh` now repacks them), vocab/config copied as `<name>_vocab.json` / `<name>_config.json`.
+- **Layer 1/3 rules from the web engine**: informal-typing view (`normRoman`, `altRoman`, `alt_pen`), FSM filter for beam words, `dfloor` for curated entries,
+  s35 shield (`sh_tau/sh_att/sh_beam/sh_lock`), `cap_common`, new `canon` rules (lagirahechha, खायेर->खाएर), new `agree` rules (म/मा, पारा, खान, पानी, 1s/1p/2 agreement),
+  `सक्नु` joining, `हुनुभयो`/`पर्छ` joining, `सँगै`/`तिर` exceptions, `!` definitive entries in `direct_ne.tsv`.
+- **Stage 1.5 stem-bigram LM** (`CompactLM`, `subword_lm.tsv`): Viterbi over consecutive roman words; on the keyboard the already committed word left of the caret seeds the chain.
+- Assets synced: `config.json` (new hybrid params), `lex_ne.tsv`, `direct_ne.tsv`, `ctx.tlmw` (re-packed, differed), `subword_lm.tsv`.
+- Intentional deviation: `canon` no longer rewrites काठमाडौँ (web does not either).
+
+Strip order: the **letters as typed are now the FIRST chip** (Gboard order), the TinyLM pick is the highlighted chip right behind it, alternatives follow.
+The composing text and Space still use the model pick (first non-literal chip; Latin for English/keep words).
+
+Realtime design (two tiers, nothing blocks the UI):
+1. keystroke -> `CandidateEngine` worker runs the **fast tier** (main model only, same ~7 ms path as before) and publishes immediately;
+2. then the **deep tier** (full ensemble + LM) runs on the same worker, aborts the moment a newer key arrives (`TlmStale` between members), and upgrades the strip/composing word in place.
+   If the ensemble answer is already cached the fast request returns it directly. Space parks (<=160 ms) until the deep answer exists, as before.
+3. Loading is staged: main model first (typing works), then `TlmLoader.attachExtras` attaches ensemble + LM in the background. Settings -> Engine tile shows Warming up / Ensemble.
+Home screen latency line now also reports ensemble p50/p95.
+
+New launcher icon (flat, no gradients/shadows): crimson tonal field, cream keycap (face + lip) with a hand-drawn stroke Devanagari ka, saffron keycap with Roman a,
+all inside the 66dp safe zone; themed monochrome layer is outline/stroke only.
+
+Not verified locally (no JDK/kotlinc in the sandbox, CI only): see CI status below.
+
+## Next ideas
+- Byakaran (grammar) chip in the strip (the joins/agree results are used already, no separate chip yet).
+- On-device p95 check of the ensemble tier; if high lower `TlmTuning.maxHelperThreads` or score members in parallel.

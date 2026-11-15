@@ -110,10 +110,19 @@ class ImeRuntime private constructor(
             try {
                 // Helper threads that split candidate scoring run at display priority, like the inference worker.
                 TlmTuning.threadInit = Runnable { WorkerThreads.boost() }
-                val engine = TlmLoader.load { name -> context.assets.open("tlm/$name").use { it.readBytes() } }
+                val reader: (String) -> ByteArray = { name -> context.assets.open("tlm/$name").use { it.readBytes() } }
+                // Phase 1: main model only, so the keyboard answers as soon as possible.
+                val engine = TlmLoader.load(reader, full = false)
                 tlm = engine
                 _tlmReady.value = true
-                KeyboardLog.d("TinyLM ready in ${android.os.SystemClock.elapsedRealtime() - started} ms")
+                KeyboardLog.d("TinyLM (main model) ready in ${android.os.SystemClock.elapsedRealtime() - started} ms")
+                // Phase 2: ensemble members (m2, a4kd) + stem-bigram LM, attached in place while the user already types.
+                try {
+                    TlmLoader.attachExtras(engine, reader)
+                } catch (t: Throwable) {
+                    KeyboardLog.e("TinyLM extras failed", t)
+                }
+                KeyboardLog.d("TinyLM ensemble ready in ${android.os.SystemClock.elapsedRealtime() - started} ms")
                 // Normal-priority warm-up that yields while the user types (a background-priority thread holding the engine lock would invert priorities): JIT-compiles the kernels and seeds the cache with common words.
                 Thread({
                     try {

@@ -1,18 +1,61 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Launcher foreground (Material 3 Expressive, flat fills only): cream squircle keycap with the Devanagari letter ka cut out
-  (Noto Sans Devanagari outline) and a saffron round badge with the Roman letter A cut out (Outfit outline). Holes are real
-  boolean differences. Everything sits inside the 66dp adaptive safe zone.
+  Launcher foreground, drawn from scratch inside the 66dp adaptive safe zone (centre 54,54):
+  a flat cream keycap (face + lip, no shadow) carrying a geometric Devanagari "ka" built from round-capped strokes,
+  and a saffron Roman "a" keycap tucked into its lower-right corner. Everything is flat fills and strokes.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+
+    <!-- keycap lip (the visible side wall) -->
     <path
-        android:fillColor="#FFFFF3E3"
-        android:pathData="M45 30H61C69.28 30 76 36.72 76 45V58.82C74.11 57.67 71.88 57 69.5 57C62.6 57 57 62.6 57 69.5C57 71.88 57.67 74.11 58.82 76H45C36.72 76 30 69.28 30 61V45C30 36.72 36.72 30 45 30ZM65.76 42.88V38.5H35.24V42.88H48.69V51.01Q48.16 51.63 47.38 52.2Q46.07 53.17 44.43 53.17Q43.29 53.17 42.6 52.68Q41.91 52.19 41.91 51.21Q41.91 50.22 42.69 49.69Q43.47 49.16 44.87 49.16Q45.51 49.16 46.1 49.22Q46.68 49.28 47.2 49.4L47.67 45.08Q46.83 44.91 45.93 44.83Q45.02 44.76 44.1 44.76Q40.42 44.76 38.39 46.4Q36.37 48.03 36.37 51.07Q36.37 53.15 37.31 54.61Q38.25 56.06 39.95 56.82Q41.65 57.58 43.93 57.58Q45.19 57.58 46.33 57.31Q47.46 57.05 48.46 56.53Q48.58 56.47 48.69 56.41V60.5H54.24V52.19Q54.59 51.64 55.2 51.22Q55.97 50.7 56.85 50.7Q57.69 50.7 58.16 51.19Q58.62 51.68 58.62 52.67Q58.62 53.8 58.09 54.85Q57.56 55.89 56.67 56.98L61.47 59.63Q62.94 57.67 63.55 55.94Q64.16 54.21 64.16 52.54Q64.16 49.65 62.48 48Q60.8 46.35 57.95 46.35Q56.63 46.35 55.62 46.68Q54.89 46.92 54.24 47.3V42.88Z" />
+        android:fillColor="#FFD9B98D"
+        android:pathData="M40,34H62A11,11 0 0 1 73,45V61A11,11 0 0 1 62,72H40A11,11 0 0 1 29,61V45A11,11 0 0 1 40,34Z" />
+    <!-- keycap face -->
     <path
-        android:fillColor="#FFFFB703"
-        android:pathData="M69.5 59.5C75.02 59.5 79.5 63.98 79.5 69.5C79.5 75.02 75.02 79.5 69.5 79.5C63.98 79.5 59.5 75.02 59.5 69.5C59.5 63.98 63.98 59.5 69.5 59.5ZM65.18 73.75H67.38L67.9 72.27H71.07L71.58 73.75H73.82L70.55 65.25H68.48ZM70.48 70.56H68.5L69.5 67.72Z" />
+        android:fillColor="#FFFFF2DE"
+        android:pathData="M40,28H62A11,11 0 0 1 73,39V55A11,11 0 0 1 62,66H40A11,11 0 0 1 29,55V39A11,11 0 0 1 40,28Z" />
+
+    <!-- Devanagari ka: shirorekha, stem, looped bowl -->
+    <path
+        android:pathData="M35.5,36.5H63"
+        android:strokeColor="#FF8A1733"
+        android:strokeWidth="4.2"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M57,36.5V58.5"
+        android:strokeColor="#FF8A1733"
+        android:strokeWidth="4.2"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M57,46C50,43.2 40.5,45 40.5,50.8C40.5,56.4 49.6,57.6 52.8,52.2"
+        android:strokeColor="#FF8A1733"
+        android:strokeWidth="4.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round" />
+
+    <!-- separation ring cut into the field, then the saffron "a" keycap -->
+    <path
+        android:fillColor="#FF9A1E3D"
+        android:pathData="M64,52.5H73A9.5,9.5 0 0 1 82.5,62V68A9.5,9.5 0 0 1 73,77.5H64A9.5,9.5 0 0 1 54.5,68V62A9.5,9.5 0 0 1 64,52.5Z" />
+    <path
+        android:fillColor="#FFC97A12"
+        android:pathData="M63.5,58.5H72.5A7,7 0 0 1 79.5,65.5V70.5A7,7 0 0 1 72.5,77.5H63.5A7,7 0 0 1 56.5,70.5V65.5A7,7 0 0 1 63.5,58.5Z" />
+    <path
+        android:fillColor="#FFF6B03E"
+        android:pathData="M63.5,55H72.5A7,7 0 0 1 79.5,62V67A7,7 0 0 1 72.5,74H63.5A7,7 0 0 1 56.5,67V62A7,7 0 0 1 63.5,55Z" />
+
+    <!-- Roman a: bowl + stem -->
+    <path
+        android:pathData="M64.4,64.5m-3.5,0a3.5,3.5 0 1 1 7,0a3.5,3.5 0 1 1 -7,0"
+        android:strokeColor="#FF5A1124"
+        android:strokeWidth="2.4" />
+    <path
+        android:pathData="M67.9,60.4V68.6"
+        android:strokeColor="#FF5A1124"
+        android:strokeWidth="2.4"
+        android:strokeLineCap="round" />
 </vector>

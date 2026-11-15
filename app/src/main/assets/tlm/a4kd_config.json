@@ -1,0 +1,1 @@
+{"max_src": 34, "d": 192, "cfg": {"n_src": 29, "n_tgt": 79, "d": 192, "h": 6, "enc": 3, "dec": 3, "ff": 576}, "rev": false}

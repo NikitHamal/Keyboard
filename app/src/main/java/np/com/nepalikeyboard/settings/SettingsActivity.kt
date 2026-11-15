@@ -350,7 +350,7 @@ private fun HomeScreen(writer: SettingsWriter) {
 
         SettingsSection("Engine") {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                StatTile("TinyLM", if (tlmReady) "Ready" else "Loading", tlmReady, Modifier.weight(1f))
+                StatTile("TinyLM", if (!tlmReady) "Loading" else if (runtime.tlm?.ensemble != null) "Ensemble" else "Warming up", tlmReady, Modifier.weight(1f))
                 StatTile("Dictionary", if (lexReady) "${(runtime.lexicon?.size ?: 0)}" else "…", lexReady, Modifier.weight(1f))
                 StatTile("Learned", "$learned", true, Modifier.weight(1f))
             }

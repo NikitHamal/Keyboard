@@ -39,9 +39,9 @@ import np.com.nepalikeyboard.ui.theme.latinStyle
 /**
  * Suggestion strip, Gboard style with Material 3 Expressive accents.
  *
- * Ordering is decided by the engine and never re-sorted here: the TinyLM pick comes first and is
- * drawn as a filled stadium chip, alternatives follow as quiet text separated by hairlines, and the
- * literal Latin input is last. A chain icon marks a chip that will be glued to the previous word
+ * Ordering is decided by the engine and never re-sorted here: the letters exactly as typed lead (Gboard
+ * order), the TinyLM pick follows as a filled stadium chip and alternatives trail as quiet text separated by
+ * hairlines. A chain icon marks a chip that will be glued to the previous word
  * (padayog). Tapping a chip commits exactly its `text`.
  */
 @Composable
