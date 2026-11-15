@@ -338,7 +338,7 @@ internal class TlmSeq2Seq(private val w: TlmWeights, val d: Int, private val hea
  * Teacher-forced scoring of the candidate pool is the hot path of every keystroke, so it is split over up to
  * [TlmTuning.maxHelperThreads] + 1 cores (each with its own scratch and KV cache); beam search is allocation free.
  */
-class KtNeural(bytes: ByteArray, vocabSrc: List<String>, private val tgt: List<String>, private val maxSrc: Int, d: Int, heads: Int, nEnc: Int, nDec: Int) : Neural {
+class KtNeural(bytes: ByteArray, vocabSrc: List<String>, private val tgt: List<String>, private val maxSrc: Int, d: Int, heads: Int, nEnc: Int, nDec: Int, val lower: Boolean = false) : Neural {
     private val net = TlmSeq2Seq(TlmWeights(bytes), d, heads, nEnc, nDec, tgt.size)
     private val s2i = vocabSrc.withIndex().associate { it.value to it.index }
     private val t2i = tgt.withIndex().associate { it.value to it.index }
@@ -363,7 +363,8 @@ class KtNeural(bytes: ByteArray, vocabSrc: List<String>, private val tgt: List<S
     override fun encode(word: String, lang: String): Any {
         val ids = ArrayList<Int>()
         ids.add(s2i["<$lang>"]!!)
-        for (c in word) s2i[c.toString()]?.let { ids.add(it) }
+        val w = if (lower) word.lowercase() else word
+        for (c in w) s2i[c.toString()]?.let { ids.add(it) }
         return net.encode(ids.take(maxSrc).toIntArray())
     }
 

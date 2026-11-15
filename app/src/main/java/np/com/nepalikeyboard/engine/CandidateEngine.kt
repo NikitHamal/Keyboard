@@ -115,6 +115,7 @@ class CandidateEngine(
         if (needsDeep) {
             pendingDeep = false
             val deep = handleRoman(request, deep = true)
+            np.com.nepalikeyboard.util.TlmStats.recordDeep(System.nanoTime() - request.submittedAt)
             publish(request.generation, deep, isFinal = true)
             post(request.generation, deep, predictionOnly = false, isFinal = true)
         }
@@ -313,8 +314,8 @@ class CandidateEngine(
         pendingDeep = !deep && suggestion.pending
         val result = ArrayList<Candidate>(MAX_CANDIDATES)
         val seen = HashSet<String>()
-        val keepLatin = tlm.keepsLatin(buffer)
-        if (keepLatin) result += Candidate(text = buffer, kind = CandidateKind.LITERAL, score = Int.MAX_VALUE)
+        // The letters exactly as typed always lead the strip (Gboard order); the TinyLM pick is the highlighted chip right after it.
+        result += Candidate(text = buffer, kind = CandidateKind.LITERAL, score = Int.MAX_VALUE)
         for ((index, word) in suggestion.words.withIndex()) {
             if (!seen.add(word)) continue
             result += Candidate(
@@ -333,7 +334,6 @@ class CandidateEngine(
         if (personal != null) {
             result.add(minOf(1, result.size), Candidate(text = personal.word, hint = personal.roman, kind = CandidateKind.PERSONAL, score = 9_000))
         }
-        if (!keepLatin) result += Candidate(text = buffer, kind = CandidateKind.LITERAL, score = Int.MIN_VALUE)
         return if (result.size > MAX_CANDIDATES) ArrayList(result.subList(0, MAX_CANDIDATES)) else result
     }
 

@@ -326,7 +326,7 @@ class SandboxController(
         for (c in r) if (!(c in 'a'..'z' || c in 'A'..'Z' || c == '\'')) return null
         if (tlm.keepsLatin(r)) return Candidate(text = r, kind = CandidateKind.LITERAL)
         return try {
-            val s = tlm.suggest(leftText(), r, 1)
+            val s = tlm.suggest(leftText(), r, 1, true, false)
             val w = s.words.firstOrNull() ?: return null
             Candidate(text = w, kind = CandidateKind.TRANSLITERATION, joinPrev = s.joins.firstOrNull() == true)
         } catch (error: Throwable) {
