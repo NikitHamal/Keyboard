@@ -112,7 +112,7 @@ Home screen latency line now also reports ensemble p50/p95.
 New launcher icon (flat, no gradients/shadows): crimson tonal field, cream keycap (face + lip) with a hand-drawn stroke Devanagari ka, saffron keycap with Roman a,
 all inside the 66dp safe zone; themed monochrome layer is outline/stroke only.
 
-Not verified locally (no JDK/kotlinc in the sandbox, CI only): see CI status below.
+Not compiled locally (no JDK/kotlinc in the sandbox, CI only). CI run 43714642665 @ 25cc5cc: green, APK `nepali-keyboard-25cc5cc.apk` (15.0 MB) published as artifact. Not yet measured on a device.
 
 ## Next ideas
 - Byakaran (grammar) chip in the strip (the joins/agree results are used already, no separate chip yet).
